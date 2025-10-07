@@ -1,0 +1,9 @@
+# Ejecutables de Godot (no subirlos al repo - muy pesados)
+godot-engine/*.exe
+
+# Proyecto de prueba vacío
+sd-s/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
