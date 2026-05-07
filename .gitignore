@@ -33,6 +33,34 @@ godot/build/
 # Logs
 *.log
 
+# Python cache / temp
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Heavy generated assets (keep prompts/code, ignore outputs)
+design/prompts/output/
+design/prompts/__pycache__/
+
+# Reference media and raw exports (heavy)
+design/references/
+*.psd
+*.kra
+*.xcf
+*.blend
+
+# Generic heavy media
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+*.flac
+*.psb
+*.tif
+*.tiff
+
 # Avoid committing project.addons (godot plugin binary files) unless needed
 # godot/addons/*/bin/
 
