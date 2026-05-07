@@ -1,0 +1,938 @@
+# ============================================================
+# combat_manager.gd — Sistema de combate
+# Barrio Sin Ley Online (BSLO)
+#   - Tab-target para seleccionar enemigos
+#   - Deteccion de pointing manual (bonus por punteria)
+#   - Sistema de hotbar (10 slots, teclas 1-0)
+#   - Calculo de danio: danio_base x stat_modifier x gear_modifier
+#   - Cover system: -75% danio frontal cerca de objetos
+#   - Ejecuciones: si enemigo <10% HP, prompt [F]
+#   - Ejecucion de habilidades con feedback visual completo
+# ============================================================
+extends Node
+
+# Senales
+signal target_selected(target: Node)
+signal target_lost()
+signal hotbar_slot_used(slot_index: int, item_data: Resource)
+signal execution_available(target: Node)
+signal execution_performed(target: Node)
+signal cover_entered()
+signal cover_exited()
+signal combat_action_performed(action_text: String)
+
+# Componentes del combatiente
+@export var player: CharacterBody3D = null
+
+# Target actual
+@export var current_target: Node = null
+var has_target: bool = false
+
+# Hotbar: 10 slots, almacena Resource (ItemData) o PackedScene (habilidad)
+@export var hotbar: Array = [null, null, null, null, null, null, null, null, null, null]
+
+# Cover system
+var is_in_cover: bool = false
+var cover_damage_reduction: float = 0.75  # 75% de reduccion
+var current_cover_object: Node = null
+var cover_check_timer: float = 0.0
+const COVER_CHECK_INTERVAL: float = 0.2
+
+# Execution
+var execution_prompt_active: bool = false
+var target_below_threshold: bool = false
+const EXECUTION_HP_THRESHOLD: float = 0.10  # 10% HP
+
+# Rango de combate
+@export var target_range: float = 30.0
+@export var melee_range: float = 3.0
+@export var interaction_range: float = 2.5
+
+# Referencias a escenas
+const PROJECTILE_SCENE: String = "res://scenes/combat/projectile.tscn"
+const DAMAGE_NUMBER_SCENE: String = "res://scenes/combat/damage_number.tscn"
+
+# Target marker
+var target_marker: MeshInstance3D = null
+var target_marker_material: StandardMaterial3D = null
+
+# Attack animation state
+var is_lunging: bool = false
+var lunge_timer: float = 0.0
+var lunge_direction: Vector3 = Vector3.ZERO
+var original_mesh_position: Vector3 = Vector3.ZERO
+const LUNGE_DURATION: float = 0.15
+const LUNGE_DISTANCE: float = 0.6
+
+func _ready():
+    """Inicializa el combat manager."""
+    add_to_group("combat_manager")
+
+    if not player:
+        # Intentar encontrar al jugador
+        var players = get_tree().get_nodes_in_group("players")
+        if players.size() > 0:
+            player = players[0]
+
+    # Crear material para el marcador de target
+    target_marker_material = StandardMaterial3D.new()
+    target_marker_material.albedo_color = Color(1.0, 0.2, 0.2, 1.0)
+    target_marker_material.emission_enabled = true
+    target_marker_material.emission = Color(1.0, 0.0, 0.0, 1.0)
+    target_marker_material.emission_energy_multiplier = 2.0
+
+    print("CombatManager: Inicializado")
+
+func _process(delta: float):
+    """Bucle principal de combate.
+    
+    Verifica:
+        - Estado del target (vivo? en rango?)
+        - Cobertura
+        - Prompt de ejecucion
+        - Animacion de lunge
+    """
+    if not player:
+        return
+    
+    # Verificar target actual
+    if has_target and current_target:
+        if not is_instance_valid(current_target):
+            _lose_target()
+        else:
+            var dist = player.global_position.distance_to(current_target.global_position)
+            if dist > target_range:
+                _lose_target()
+            else:
+                _update_target_marker()
+    
+    # Verificar cobertura periodicamente
+    cover_check_timer -= delta
+    if cover_check_timer <= 0.0:
+        cover_check_timer = COVER_CHECK_INTERVAL
+        _check_cover()
+    
+    # Verificar ejecucion
+    if has_target and current_target:
+        _check_execution()
+
+    # Procesar animacion de lunge
+    if is_lunging and player:
+        _process_lunge(delta)
+
+func _input(event: InputEvent):
+    """Maneja input de combate: tab-target, hotbar, ejecucion."""
+    if not player:
+        return
+    
+    # Tab-target: seleccionar enemigo
+    if event.is_action_pressed("tab_target"):
+        _find_nearest_target()
+    
+    # Hotbar (teclas 1-0)
+    for i in range(10):
+        var action_name = "hotbar_slot_" + str(i + 1)
+        if event.is_action_pressed(action_name):
+            _use_hotbar_slot(i)
+    
+    # Ejecucion
+    if event.is_action_pressed("execute") and execution_prompt_active:
+        _perform_execution()
+
+# ============================================================
+# SISTEMA DE TARGET
+# ============================================================
+
+func _find_nearest_target():
+    """Busca el enemigo mas cercano dentro de 20m usando Tab-target.
+    
+    Prioriza enemigos frente al jugador y dentro de 20m.
+    """
+    var enemies = get_tree().get_nodes_in_group("enemies")
+    var closest_enemy: Node = null
+    var closest_distance: float = 20.0  # Max 20m para tab-target
+    
+    for enemy in enemies:
+        if not is_instance_valid(enemy):
+            continue
+        if not _is_enemy_alive(enemy):
+            continue
+        
+        var dist = player.global_position.distance_to(enemy.global_position)
+        if dist > closest_distance:
+            continue
+        
+        # Verificar si el enemigo esta frente al jugador
+        if enemy is Node3D:
+            var to_enemy = (enemy.global_position - player.global_position).normalized()
+            var player_forward = -player.global_transform.basis.z
+            player_forward.y = 0.0
+            player_forward = player_forward.normalized()
+            var dot = to_enemy.dot(player_forward)
+            
+            # Preferir enemigos frente (dot > 0) sobre detras
+            if dot > -0.3:
+                closest_distance = dist
+                closest_enemy = enemy
+    
+    if closest_enemy:
+        _set_target(closest_enemy)
+    else:
+        _lose_target()
+        print("Combat: Sin enemigos en rango")
+
+func _find_next_target():
+    """Busca el siguiente enemigo valido dentro del rango usando Tab-target.
+    
+    Prioriza enemigos cercanos al centro de la pantalla.
+    """
+    var enemies = get_tree().get_nodes_in_group("enemies")
+    var closest_enemy: Node = null
+    var closest_screen_distance: float = INF
+
+    # Obtener centro de pantalla
+    var screen_center = Vector2(
+        get_viewport().size.x * 0.5,
+        get_viewport().size.y * 0.5
+    )
+
+    for enemy in enemies:
+        if not is_instance_valid(enemy):
+            continue
+        if not _is_enemy_alive(enemy):
+            continue
+
+        var dist = player.global_position.distance_to(enemy.global_position)
+        if dist > target_range:
+            continue
+
+        # Verificar si el enemigo esta en pantalla
+        if enemy is Node3D:
+            var enemy_screen_pos = get_viewport().get_camera_3d().unproject_position(enemy.global_position)
+            var screen_dist = enemy_screen_pos.distance_to(screen_center)
+
+            if screen_dist < closest_screen_distance:
+                closest_screen_distance = screen_dist
+                closest_enemy = enemy
+
+    if closest_enemy:
+        _set_target(closest_enemy)
+    else:
+        _lose_target()
+
+func _set_target(target: Node):
+    """Establece un nuevo objetivo.
+    
+    Parametros:
+        target: Nodo enemigo a targetear
+    """
+    # Limpiar marcador anterior
+    _clear_target_marker()
+
+    current_target = target
+    has_target = true
+    target_selected.emit(target)
+    _create_target_marker(target)
+    print("Combat: Target seleccionado: ", target.name)
+
+func _lose_target():
+    """Pierde el objetivo actual."""
+    if has_target:
+        _clear_target_marker()
+        current_target = null
+        has_target = false
+        execution_prompt_active = false
+        target_below_threshold = false
+        target_lost.emit()
+
+func _is_enemy_alive(enemy: Node) -> bool:
+    """Verifica si un enemigo sigue vivo.
+    
+    Busca grupo 'enemies' o verifica senal de muerte.
+    """
+    if enemy.has_method("is_alive"):
+        return enemy.is_alive()
+    if enemy.has_method("is_alive_check"):
+        return enemy.is_alive_check()
+    return true  # Por defecto asumir vivo
+
+# ============================================================
+# MARCADOR DE TARGET (VISUAL)
+# ============================================================
+
+func _create_target_marker(target: Node):
+    """Crea un marcador visual sobre el target."""
+    if not target is Node3D:
+        return
+
+    target_marker = MeshInstance3D.new()
+    var ring_mesh = CylinderMesh.new()
+    ring_mesh.top_radius = 0.4
+    ring_mesh.bottom_radius = 0.4
+    ring_mesh.height = 0.1
+    target_marker.mesh = ring_mesh
+    target_marker.material_override = target_marker_material
+    target_marker.name = "_target_marker"
+
+    # Posicionarlo sobre el enemigo
+    target.add_child(target_marker)
+    target_marker.position = Vector3(0.0, 2.5, 0.0)
+    target_marker.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+
+func _clear_target_marker():
+    """Elimina el marcador visual del target anterior."""
+    if target_marker and is_instance_valid(target_marker):
+        target_marker.queue_free()
+    target_marker = null
+
+func _update_target_marker():
+    """Actualiza la posicion y rotacion del marcador de target."""
+    if not target_marker or not is_instance_valid(target_marker):
+        return
+    # El marcador ya es hijo del target, se mueve con el
+    # Rotar ligeramente para efecto visual
+    target_marker.rotate_y(0.02)
+
+# ============================================================
+# SISTEMA DE HOTBAR
+# ============================================================
+
+func _use_hotbar_slot(slot_index: int):
+    """Usa el item/habilidad en el slot de hotbar especificado.
+    
+    Parametros:
+        slot_index: Indice del slot (0-9)
+    """
+    if slot_index < 0 or slot_index >= hotbar.size():
+        return
+
+    var slot_data = hotbar[slot_index]
+    if slot_data == null:
+        return
+
+    # El slot puede contener un ItemData o un recurso de habilidad
+    if true:  # was: is ItemData
+        var item = slot_data as Resource
+        # Buscar el item en el inventario
+        if InventoryManager:
+            # Buscar en el inventario este item
+            var items = InventoryManager.get_all_items()
+            for entry in items:
+                if entry["item"].item_name == item.item_name:
+                    InventoryManager.use_item(entry["col"], entry["row"])
+                    hotbar_slot_used.emit(slot_index, item)
+                    break
+    else:
+        # Si es una habilidad (PackedScene o recurso personalizado)
+        hotbar_slot_used.emit(slot_index, null)
+        print("Combat: Usando habilidad en slot ", slot_index + 1)
+
+func assign_to_hotbar(slot_index: int, data: Resource):
+    """Asigna un item o habilidad a un slot de la hotbar.
+    
+    Parametros:
+        slot_index: Indice del slot (0-9)
+        data: Recurso (ItemData o habilidad) a asignar
+    """
+    if slot_index >= 0 and slot_index < hotbar.size():
+        hotbar[slot_index] = data
+
+# ============================================================
+# EJECUCION DE HABILIDADES (SKILL EXECUTION)
+# ============================================================
+
+func execute_player_skill(p_skill: Resource):
+    """Ejecuta una habilidad de clase del jugador con todo el feedback visual.
+    
+    Determina el tipo de habilidad (melee, ranged, area) y la ejecuta.
+    
+    Parametros:
+        p_skill: SkillData resource con los datos de la habilidad
+    """
+    if not player or not p_skill:
+        return
+
+    var skill_name = p_skill.skill_name
+    var multiplier = p_skill.damage_multiplier
+    var area_radius = p_skill.area_radius
+    var is_targeted = p_skill.is_targeted
+
+    # Calcular danio base usando stats del jugador
+    var base_damage = _calculate_skill_damage(p_skill)
+    var class_role = _get_player_class_role()
+
+    # Determinar tipo de habilidad y ejecutar
+    if area_radius > 0.0:
+        # Habilidad de area
+        var hits = _execute_area_skill(area_radius, base_damage, skill_name)
+        for hit_data in hits:
+            _spawn_hit_feedback(hit_data["enemy"], hit_data["damage"], skill_name)
+    elif is_targeted and has_target and current_target:
+        # Habilidad con target: decidir melee vs ranged segun rol
+        var dist = player.global_position.distance_to(current_target.global_position)
+        if class_role in ["MELEE", "TANK"]:
+            # Melee: verificar rango
+            if dist <= melee_range:
+                _execute_melee_skill(base_damage, skill_name)
+            else:
+                print("Combat: Objetivo fuera de rango melee (%.1fm > %.1fm)" % [dist, melee_range])
+        else:
+            # Ranged: disparar proyectil
+            _execute_ranged_skill(base_damage, skill_name)
+    elif is_targeted:
+        # Habilidad con target pero sin objetivo seleccionado
+        print("Sin objetivo")
+        _show_combat_feedback("Sin objetivo para " + skill_name)
+    elif not is_targeted and multiplier == 0.0:
+        # Habilidad de buff/debuff/heal (sin danio)
+        print("[Player] usa " + skill_name + "! (habilidad de soporte)")
+        _show_combat_feedback("Usas " + skill_name)
+    else:
+        # Habilidad no targeteada con danio: tratar como area alrededor del jugador
+        var hits = _execute_area_skill(area_radius if area_radius > 0 else 1.5, base_damage, skill_name)
+        for hit_data in hits:
+            _spawn_hit_feedback(hit_data["enemy"], hit_data["damage"], skill_name)
+
+func _calculate_skill_damage(skill: Resource) -> int:
+    """Calcula el danio base de una habilidad basado en stats del jugador.
+    
+    Formula: stat_principal * 3 * damage_multiplier + nivel
+    
+    Parametros:
+        skill: SkillData resource
+    Returns:
+        int: Danio base calculado
+    """
+    var base = 10  # danio minimo base
+    var multiplier = skill.damage_multiplier
+
+    if StatsManager:
+        var class_data = ClassManager.get_class_data(player.current_class_id) if player.has_method("get") or "current_class_id" in player else null
+        var primary_stat = "STR"
+        if class_data:
+            primary_stat = class_data.primary_stat if class_data else "STR"
+        
+        var stat_value = StatsManager.get_stat(primary_stat)
+        base = maxi(5, int(stat_value * 3 * multiplier))
+        base += StatsManager.level
+
+    return base
+
+func _get_player_class_role() -> String:
+    """Obtiene el rol de la clase del jugador (MELEE, RANGED, etc.)."""
+    if not ClassManager:
+        return "MELEE"
+    var class_id = ""
+    if player.has_method("get"):
+        class_id = player.get("current_class_id") if "current_class_id" in player else ""
+    else:
+        class_id = player.current_class_id
+    
+    var class_data = ClassManager.get_class_data(class_id)
+    if class_data:
+        return class_data.role
+    return "MELEE"
+
+func _execute_melee_skill(damage: int, skill_name: String):
+    """Ejecuta una habilidad melee: raycast hacia adelante.
+    
+    Parametros:
+        damage: Danio a aplicar
+        skill_name: Nombre de la habilidad para el log
+    """
+    if not player:
+        return
+
+    var forward = -player.global_transform.basis.z
+    forward.y = 0.0
+    forward = forward.normalized()
+
+    var origin = player.global_position + Vector3(0.0, 1.0, 0.0)
+    var end = origin + forward * melee_range
+
+    var space_state = player.get_world_3d().direct_space_state
+    var query = PhysicsRayQueryParameters3D.create(origin, end)
+    query.exclude = [player]
+    query.collision_mask = 4  # Layer 3 = NPC (bit 3)
+    # Usar collision mask que incluya NPC
+    query.collision_mask = 4  # bit 3 = valor 4 (1 << 2)
+
+    var result = space_state.intersect_ray(query)
+    
+    var hit_enemy: Node = null
+    
+    if result and result.collider:
+        hit_enemy = result.collider
+        if hit_enemy.has_method("take_damage"):
+            hit_enemy.take_damage(damage)
+        elif hit_enemy.get_parent() and hit_enemy.get_parent().has_method("take_damage"):
+            hit_enemy.get_parent().take_damage(damage)
+    elif has_target and current_target:
+        # Si no golpeo el raycast pero hay target en rango
+        var dist = player.global_position.distance_to(current_target.global_position)
+        if dist <= melee_range:
+            hit_enemy = current_target
+            if hit_enemy.has_method("take_damage"):
+                hit_enemy.take_damage(damage)
+
+    if hit_enemy:
+        var hit_pos = hit_enemy.global_position if hit_enemy is Node3D else player.global_position + forward * 1.5
+        print("[Player] usa %s! Danio: %d" % [skill_name, damage])
+        _show_combat_feedback("Golpeas al enemigo - %d danio" % damage)
+        _spawn_damage_number(hit_pos, damage, false, false)
+        _spawn_hit_particle(hit_pos)
+        _flash_enemy(hit_enemy)
+    else:
+        print("[Player] usa %s! Fallo" % skill_name)
+        _show_combat_feedback("Golpeas al aire")
+
+    # Animacion de lunge
+    _start_lunge(forward)
+
+func _execute_ranged_skill(damage: int, skill_name: String):
+    """Ejecuta una habilidad a distancia: dispara un proyectil.
+    
+    Parametros:
+        damage: Danio a aplicar
+        skill_name: Nombre de la habilidad
+    """
+    if not player:
+        return
+
+    var forward = -player.global_transform.basis.z
+    forward.y = 0.0
+    forward = forward.normalized()
+
+    # Instanciar proyectil
+    var projectile_scene = load(PROJECTILE_SCENE)
+    if not projectile_scene:
+        push_error("CombatManager: No se pudo cargar projectile.tscn")
+        return
+
+    var projectile = projectile_scene.instantiate()
+    projectile.setup(forward, damage, player)
+    projectile.global_position = player.global_position + Vector3(0.0, 1.2, 0.0) + forward * 1.0
+
+    get_tree().current_scene.add_child(projectile)
+
+    print("[Player] usa %s! Dispara proyectil (Danio: %d)" % [skill_name, damage])
+    _show_combat_feedback("Disparas %s - %d danio potencial" % [skill_name, damage])
+
+func _execute_area_skill(radius: float, damage: int, skill_name: String) -> Array:
+    """Ejecuta una habilidad de area: aplica danio a todos los enemigos en radio.
+    
+    Parametros:
+        radius: Radio del area de efecto
+        damage: Danio a aplicar
+        skill_name: Nombre de la habilidad
+    Returns:
+        Array: Lista de diccionarios con enemy y damage aplicado
+    """
+    var hits = []
+    if not player:
+        return hits
+
+    var enemies = get_tree().get_nodes_in_group("enemies")
+    var total_hit = 0
+
+    for enemy in enemies:
+        if not is_instance_valid(enemy):
+            continue
+        if not _is_enemy_alive(enemy):
+            continue
+        
+        var dist = player.global_position.distance_to(enemy.global_position)
+        if dist <= radius:
+            if enemy.has_method("take_damage"):
+                enemy.take_damage(damage)
+                hits.append({"enemy": enemy, "damage": damage})
+                total_hit += 1
+
+    if total_hit > 0:
+        print("[Player] usa %s! Danio en area: %d enemigos golpeados (Danio: %d cada uno)" % [skill_name, total_hit, damage])
+        _show_combat_feedback("%s golpea a %d enemigos - %d danio" % [skill_name, total_hit, damage])
+    else:
+        print("[Player] usa %s! Sin enemigos en rango" % skill_name)
+
+    return hits
+
+# ============================================================
+# FEEDBACK VISUAL
+# ============================================================
+
+func _spawn_hit_feedback(enemy: Node, damage: int, skill_name: String):
+    """Genera todo el feedback visual para un golpe.
+    
+    Parametros:
+        enemy: El enemigo golpeado
+        damage: Danio aplicado
+        skill_name: Nombre de la habilidad
+    """
+    var hit_pos = enemy.global_position if enemy is Node3D else player.global_position
+    # Ajustar posicion a la cabeza/pecho del enemigo
+    if enemy is Node3D:
+        hit_pos.y += 1.5
+
+    _spawn_damage_number(hit_pos, damage, false, false)
+    _spawn_hit_particle(hit_pos)
+    _flash_enemy(enemy)
+
+func _spawn_damage_number(position: Vector3, value: int, is_critical: bool = false, is_heal: bool = false):
+    """Genera un numero de danio flotante en la posicion dada.
+    
+    Parametros:
+        position: Posicion 3D donde aparecera el numero
+        value: Valor del danio
+        is_critical: true para color critico
+        is_heal: true para color de curacion
+    """
+    var dn_scene = load(DAMAGE_NUMBER_SCENE)
+    if not dn_scene:
+        return
+
+    var dn = dn_scene.instantiate()
+    dn.setup(value, is_critical, is_heal)
+    dn.global_position = position + Vector3(randf_range(-0.2, 0.2), 0.5, randf_range(-0.2, 0.2))
+
+    get_tree().current_scene.add_child(dn)
+
+func _spawn_hit_particle(position: Vector3):
+    """Genera una particula de golpe (cuadrado de color que se desvanece).
+    
+    Parametros:
+        position: Posicion donde aparecera la particula
+    """
+    var particle = MeshInstance3D.new()
+    var box_mesh = BoxMesh.new()
+    box_mesh.size = Vector3(0.3, 0.3, 0.3)
+    particle.mesh = box_mesh
+
+    var mat = StandardMaterial3D.new()
+    mat.albedo_color = Color(1.0, 0.3, 0.1, 1.0)
+    mat.emission_enabled = true
+    mat.emission = Color(1.0, 0.5, 0.0, 1.0)
+    mat.emission_energy_multiplier = 3.0
+    particle.material_override = mat
+
+    particle.global_position = position
+    get_tree().current_scene.add_child(particle)
+
+    # Animar con Tween
+    var tween = create_tween()
+    tween.set_parallel(true)
+    tween.tween_property(particle, "scale", Vector3(1.5, 1.5, 1.5), 0.3)
+    tween.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+    tween.tween_property(mat, "emission_energy_multiplier", 0.0, 0.3)
+    tween.chain().tween_callback(particle.queue_free)
+
+func _flash_enemy(enemy: Node):
+    """Hace que un enemigo parpadee en rojo por 0.1 segundos.
+    
+    Parametros:
+        enemy: El enemigo a flashear
+    """
+    if not enemy is Node3D:
+        return
+
+    var mesh_node: MeshInstance3D = null
+    # Buscar MeshInstance3D en el enemigo o sus hijos
+    for child in enemy.get_children():
+        if child is MeshInstance3D:
+            mesh_node = child
+            break
+
+    if not mesh_node or not mesh_node.mesh:
+        return
+
+    # Guardar material original
+    var original_mat = mesh_node.material_override
+    if not original_mat:
+        original_mat = mesh_node.get_surface_override_material(0)
+
+    # Crear material rojo de flash
+    var flash_mat = StandardMaterial3D.new()
+    flash_mat.albedo_color = Color(1.0, 0.0, 0.0, 1.0)
+    flash_mat.emission_enabled = true
+    flash_mat.emission = Color(1.0, 0.0, 0.0, 1.0)
+    flash_mat.emission_energy_multiplier = 2.0
+
+    mesh_node.material_override = flash_mat
+
+    # Restaurar despues de 0.1s
+    var tween = create_tween()
+    tween.tween_interval(0.1)
+    tween.tween_callback(func():
+        if is_instance_valid(mesh_node):
+            mesh_node.material_override = original_mat
+    )
+
+func _start_lunge(direction: Vector3):
+    """Inicia la animacion de lunge (avance rapido del mesh).
+    
+    Parametros:
+        direction: Direccion del lunge
+    """
+    if not player or is_lunging:
+        return
+
+    var mesh_node: MeshInstance3D = null
+    for child in player.get_children():
+        if child is MeshInstance3D:
+            mesh_node = child
+            break
+
+    if not mesh_node:
+        return
+
+    is_lunging = true
+    lunge_timer = 0.0
+    lunge_direction = direction.normalized()
+    original_mesh_position = mesh_node.position
+
+func _process_lunge(delta: float):
+    """Procesa la animacion de lunge frame a frame."""
+    lunge_timer += delta
+    var progress = lunge_timer / LUNGE_DURATION
+
+    var mesh_node: MeshInstance3D = null
+    for child in player.get_children():
+        if child is MeshInstance3D:
+            mesh_node = child
+            break
+
+    if not mesh_node:
+        is_lunging = false
+        return
+
+    if progress >= 1.0:
+        # Regresar a posicion original
+        mesh_node.position = original_mesh_position
+        is_lunging = false
+        return
+
+    # Avanzar y regresar (ida y vuelta)
+    var offset: float
+    if progress < 0.5:
+        # Ida: 0 -> 1
+        offset = progress * 2.0 * LUNGE_DISTANCE
+    else:
+        # Vuelta: 1 -> 0
+        offset = (1.0 - progress) * 2.0 * LUNGE_DISTANCE
+
+    mesh_node.position = original_mesh_position + lunge_direction * offset
+
+func _show_combat_feedback(message: String):
+    """Envia un mensaje al HUD para mostrar en el combat log.
+    
+    Parametros:
+        message: Texto a mostrar
+    """
+    combat_action_performed.emit(message)
+    # Tambien intentar enviar al HUD directamente
+    var huds = get_tree().get_nodes_in_group("hud")
+    for hud in huds:
+        if hud.has_method("show_combat_log"):
+            hud.show_combat_log(message)
+
+# ============================================================
+# CALCULO DE DANIO
+# ============================================================
+
+func calculate_damage(base_damage: int, target: Node, damage_type: String = "physical") -> int:
+    """Calcula el danio final aplicando todos los modificadores.
+    
+    Formula: danio_base x stat_modifier x gear_modifier x cover_modifier
+    
+    Parametros:
+        base_damage: Danio base del arma/habilidad
+        target: Objetivo del danio
+        damage_type: Tipo de danio
+    Returns:
+        int: Danio final calculado
+    """
+    var final_damage = base_damage
+    
+    # Modificador por stats
+    var stat_mod: float = 1.0
+    match damage_type.to_lower():
+        "physical", "melee":
+            stat_mod = 1.0 + (StatsManager.get_stat("STR") * 0.05)
+        "ranged":
+            stat_mod = 1.0 + (StatsManager.get_stat("DEX") * 0.05)
+        "explosive":
+            stat_mod = 1.0 + (StatsManager.get_stat("INT") * 0.05)
+        "magical":
+            stat_mod = 1.0 + (StatsManager.get_stat("WIS") * 0.05)
+    
+    final_damage = int(final_damage * stat_mod)
+    
+    # Modificador por gear (armas equipadas)
+    # TODO: Implementar sistema de equipo
+    var gear_mod: float = 1.0
+    final_damage = int(final_damage * gear_mod)
+    
+    # Modificador por cobertura
+    if is_in_cover:
+        final_damage = int(final_damage * (1.0 - cover_damage_reduction))
+    
+    return maxi(1, final_damage)
+
+func calculate_defense(incoming_damage: int, target: Node = null) -> int:
+    """Calcula el danio recibido despues de defensa.
+    
+    Aplica resistencias y reduccion de danio del objetivo.
+    
+    Parametros:
+        incoming_damage: Danio entrante
+        target: Objetivo que recibe el danio
+    Returns:
+        int: Danio final despues de defensa
+    """
+    if target == null:
+        target = current_target
+    
+    if not target:
+        return incoming_damage
+    
+    # Reduccion por defensa del objetivo (placeholder)
+    # TODO: Implementar sistema de defensa/armadura
+    var defense_reduction: float = 1.0
+    if target.has_method("get_defense_rating"):
+        var def_rating = target.get_defense_rating()
+        defense_reduction = 100.0 / (100.0 + def_rating)
+    
+    return maxi(1, int(incoming_damage * defense_reduction))
+
+# ============================================================
+# COVER SYSTEM
+# ============================================================
+
+func _check_cover():
+    """Verifica si el jugador esta cerca de un objeto que pueda usar como cobertura.
+    
+    Realiza un raycast hacia adelante para detectar objetos.
+    Si esta cerca y mirando hacia un objeto, aplica cover.
+    """
+    if not player:
+        return
+    
+    var forward = -player.global_transform.basis.z
+    forward.y = 0.0
+    forward = forward.normalized()
+    
+    var origin = player.global_position + Vector3(0.0, 1.0, 0.0)
+    var end = origin + forward * interaction_range
+    
+    var space_state = player.get_world_3d().direct_space_state
+    if not space_state:
+        return
+    
+    var query = PhysicsRayQueryParameters3D.create(origin, end)
+    query.exclude = [player]
+    query.collision_mask = 1  # Layer 1 = World
+    
+    var result = space_state.intersect_ray(query)
+    
+    if result and not result.collider.is_in_group("players"):
+        # Hay un objeto cerca y estamos mirando hacia el
+        var dist = origin.distance_to(result.position)
+        if dist <= interaction_range and dist > 0.5:
+            if not is_in_cover:
+                is_in_cover = true
+                current_cover_object = result.collider
+                cover_entered.emit()
+                print("Combat: Cobertura activada")
+            return
+    
+    # No hay cobertura
+    if is_in_cover:
+        is_in_cover = false
+        current_cover_object = null
+        cover_exited.emit()
+        print("Combat: Cobertura desactivada")
+
+func is_under_cover() -> bool:
+    """Retorna true si el jugador esta en cobertura.
+    
+    Returns:
+        bool: Estado de cobertura actual
+    """
+    return is_in_cover
+
+# ============================================================
+# SISTEMA DE EJECUCION
+# ============================================================
+
+func _check_execution():
+    """Verifica si el target actual esta por debajo del umbral de ejecucion.
+    
+    Si tiene menos de 10% HP, muestra prompt de ejecucion.
+    """
+    if not has_target or not current_target:
+        execution_prompt_active = false
+        target_below_threshold = false
+        return
+    
+    var is_below = false
+    if current_target.has_method("get_hp_ratio"):
+        var hp_ratio = current_target.get_hp_ratio()
+        is_below = hp_ratio <= EXECUTION_HP_THRESHOLD
+    elif current_target.has_method("get_hp") and current_target.has_method("get_max_hp"):
+        var hp = current_target.get_hp()
+        var max_hp = current_target.get_max_hp()
+        is_below = (float(hp) / float(max_hp)) <= EXECUTION_HP_THRESHOLD
+    
+    if is_below and not target_below_threshold:
+        target_below_threshold = true
+        execution_prompt_active = true
+        execution_available.emit(current_target)
+        print("Combat: Ejecucion disponible en: ", current_target.name)
+    elif not is_below:
+        target_below_threshold = false
+        execution_prompt_active = false
+
+func _perform_execution():
+    """Ejecuta al objetivo actual.
+    
+    Animation placeholder: destruye al target y emite senal.
+    """
+    if not has_target or not current_target:
+        return
+    
+    print("Combat: Ejecutando a: ", current_target.name)
+    execution_performed.emit(current_target)
+    
+    # Destruir al enemigo (placeholder)
+    if current_target.has_method("die"):
+        current_target.die()
+    else:
+        current_target.queue_free()
+    
+    execution_prompt_active = false
+    target_below_threshold = false
+    _lose_target()
+
+func is_execution_available() -> bool:
+    """Retorna true si hay una ejecucion disponible.
+    
+    Returns:
+        bool: true si se puede ejecutar al target actual
+    """
+    return execution_prompt_active
+
+# ============================================================
+# SISTEMA DE PUNTERIA (AIMING BONUS)
+# ============================================================
+
+func get_aim_bonus() -> float:
+    """Retorna un bonus de danio basado en la punteria del jugador.
+    
+    Si el jugador esta apuntando manualmente (sin tab-target),
+    obtiene un bonus del 25% de danio.
+    
+    Returns:
+        float: Multiplicador de danio (1.0 = sin bonus, 1.25 = bonus)
+    """
+    if not has_target:
+        return 1.25  # Full aim bonus si no hay target seleccionado
+    return 1.0  # Sin bonus si hay tab-target activo

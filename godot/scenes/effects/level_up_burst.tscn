@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://level_up_burst_effect"]
+
+[ext_resource type="Script" path="res://scenes/effects/level_up_burst.gd" id="1_level_up_script"]
+
+[node name="LevelUpBurst" type="Node3D"]
+script = ExtResource("1_level_up_script")
+burst_duration = 2.0
+particle_count = 20

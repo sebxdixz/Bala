@@ -1,0 +1,27 @@
+[gd_scene load_steps=3 format=3 uid="uid://enemy_healthbar"]
+
+[ext_resource type="Script" path="res://scripts/npc/healthbar.gd" id="1_hb_script"]
+
+[sub_resource type="QuadMesh" id="QuadMeshBar"]
+size = Vector2(1.5, 0.15)
+
+[node name="NPCHealthBar" type="Node3D"]
+script = ExtResource("1_hb_script")
+
+[node name="BarBackground" type="MeshInstance3D" parent="."]
+mesh = SubResource("QuadMeshBar")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="BarForeground" type="MeshInstance3D" parent="."]
+mesh = SubResource("QuadMeshBar")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+
+[node name="NameLabel" type="Label3D" parent="."]
+text = "NPC Name [Lv.1]"
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+billboard = 2
+no_depth_test = true
+font_size = 32
+modulate = Color(1, 1, 1, 1)
+outline_size = 2
+outline_modulate = Color(0, 0, 0, 0.9)

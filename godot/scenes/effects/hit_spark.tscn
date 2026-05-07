@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://hit_spark_effect"]
+
+[ext_resource type="Script" path="res://scenes/effects/hit_spark.gd" id="1_hit_spark_script"]
+
+[node name="HitSpark" type="Node3D"]
+script = ExtResource("1_hit_spark_script")
+spark_color = Color(1.0, 0.85, 0.2, 1.0)
+spark_count = 6
+lifetime = 0.4
+spread_speed = 3.0

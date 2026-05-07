@@ -1,0 +1,109 @@
+[gd_scene load_steps=5 format=3 uid="uid://shop_scene"]
+
+[ext_resource type="Script" path="res://scripts/ui/shop_screen.gd" id="1_shop_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop_panel"]
+bg_color = Color(0.08, 0.08, 0.12, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.5, 0.2, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_close_btn"]
+bg_color = Color(0.7, 0.15, 0.1, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.3, 0.2, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_scroll_bg"]
+bg_color = Color(0.05, 0.05, 0.08, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.3, 0.3, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="ShopScreen" type="CanvasLayer"]
+layer = 3
+visible = false
+script = ExtResource("1_shop_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.75)
+mouse_filter = 0
+
+[node name="ShopPanel" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 120.0
+offset_top = 40.0
+offset_right = 520.0
+offset_bottom = 640.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_shop_panel")
+
+[node name="Title" type="Label" parent="ShopPanel"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 12.0
+offset_right = 385.0
+offset_bottom = 40.0
+text = "EL FERRETERO"
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+theme_override_font_sizes/font_size = 24
+
+[node name="MoneyLabel" type="Label" parent="ShopPanel"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 44.0
+offset_right = 385.0
+offset_bottom = 62.0
+text = "PB: 0"
+theme_override_colors/font_color = Color(0.3, 1, 0.3, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="CloseButton" type="Button" parent="ShopPanel"]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 8.0
+offset_right = 385.0
+offset_bottom = 44.0
+text = "CERRAR"
+theme_override_styles/normal = SubResource("StyleBoxFlat_close_btn")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ShopPanel"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 70.0
+offset_right = 385.0
+offset_bottom = 590.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_scroll_bg")
+
+[node name="GridContainer" type="VBoxContainer" parent="ShopPanel/ScrollContainer"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 360.0
+offset_bottom = 510.0
+theme_override_constants/separation = 8

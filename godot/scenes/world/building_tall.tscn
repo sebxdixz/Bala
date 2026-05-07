@@ -1,0 +1,147 @@
+[gd_scene format=3 uid="uid://cuco3yv8sseom"]
+
+[ext_resource type="Script" path="res://scripts/world/building_tall.gd" id="1_script"]
+
+[sub_resource type="StandardMaterial3D" id="mat_body_default"]
+albedo_color = Color(0.227, 0.235, 0.231, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="mesh_body"]
+material = SubResource("mat_body_default")
+size = Vector3(8, 25, 8)
+
+[sub_resource type="StandardMaterial3D" id="mat_roof_default"]
+albedo_color = Color(0.14, 0.15, 0.14, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="mesh_roof"]
+material = SubResource("mat_roof_default")
+size = Vector3(8.2, 1, 8.2)
+
+[sub_resource type="StandardMaterial3D" id="mat_door_default"]
+albedo_color = Color(0.25, 0.2, 0.15, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="mesh_door"]
+material = SubResource("mat_door_default")
+size = Vector3(2, 3, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="mat_antenna_default"]
+albedo_color = Color(0.3, 0.3, 0.3, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="mesh_antenna"]
+material = SubResource("mat_antenna_default")
+top_radius = 0.05
+bottom_radius = 0.05
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="mat_window_default"]
+albedo_color = Color(1, 0.8, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.8, 0.2, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="BoxMesh" id="mesh_window"]
+material = SubResource("mat_window_default")
+size = Vector3(1, 1.5, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="mat_neon_default"]
+albedo_color = Color(1, 0, 0.667, 1)
+emission_enabled = true
+emission = Color(1, 0, 0.667, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="BoxMesh" id="mesh_neon"]
+material = SubResource("mat_neon_default")
+size = Vector3(6, 0.8, 0.05)
+
+[sub_resource type="BoxShape3D" id="shape_body"]
+size = Vector3(8, 25, 8)
+
+[node name="BuildingTall" type="StaticBody3D"]
+script = ExtResource("1_script")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_body")
+
+[node name="Roof" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 13, 0)
+mesh = SubResource("mesh_roof")
+
+[node name="Door" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -11, -4.05)
+mesh = SubResource("mesh_door")
+
+[node name="Antenna" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 14.5, 1.5)
+mesh = SubResource("mesh_antenna")
+
+[node name="NeonSign" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -4.03)
+mesh = SubResource("mesh_neon")
+visible = false
+
+[node name="Window_FR_R1C1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R1C2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R1C3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, -8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R2C1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, -4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R2C2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R2C3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, -4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R3C1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R3C2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R3C3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R4C1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R4C2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R4C3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 4, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R5C1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R5C2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="Window_FR_R5C3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 8, -4.03)
+mesh = SubResource("mesh_window")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("shape_body")

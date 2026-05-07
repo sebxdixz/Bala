@@ -1,0 +1,56 @@
+# ============================================================
+# damage_number.gd — Numero de danio flotante
+# Barrio Sin Ley Online (BSLO)
+# Label3D que muestra el danio, flota hacia arriba y se desvanece.
+# ============================================================
+extends Label3D
+
+@export var float_speed: float = 1.5
+@export var fade_duration: float = 1.5
+@export var critical_color: Color = Color(1.0, 0.84, 0.0, 1.0)
+@export var normal_color: Color = Color(1.0, 1.0, 1.0, 1.0)
+@export var heal_color: Color = Color(0.2, 1.0, 0.3, 1.0)
+
+var _elapsed: float = 0.0
+
+func _ready():
+	"""Configura el Label3D para billboard y outline."""
+	billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	font_size = 32
+	outline_size = 2
+	outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+	modulate = Color(1.0, 1.0, 1.0, 1.0)
+
+func setup(value: int, is_critical: bool = false, is_heal: bool = false):
+	"""Configura el texto y color del numero de danio.
+	
+	Parametros:
+		value: Valor numerico a mostrar
+		is_critical: true para color amarillo critico
+		is_heal: true para color verde de curacion
+	"""
+	if is_heal:
+		text = "+" + str(value)
+		modulate = heal_color
+	else:
+		text = "-" + str(value)
+		if is_critical:
+			modulate = critical_color
+		else:
+			modulate = normal_color
+
+func _process(delta: float):
+	"""Anima: flota hacia arriba y se desvanece."""
+	_elapsed += delta
+	var progress = _elapsed / fade_duration
+
+	if progress >= 1.0:
+		queue_free()
+		return
+
+	# Flotar hacia arriba
+	global_position.y += float_speed * delta
+
+	# Desvanecer
+	var alpha = 1.0 - progress
+	modulate.a = alpha

@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://bminimap0001"]
+
+[ext_resource type="Script" path="res://scripts/ui/minimap.gd" id="1_minimap_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxMinimapBg"]
+bg_color = Color(0.05, 0.05, 0.08, 0.85)
+corner_radius_top_left = 75
+corner_radius_top_right = 75
+corner_radius_bottom_right = 75
+corner_radius_bottom_left = 75
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxMinimapBorder"]
+bg_color = Color(0.0, 0.0, 0.0, 0.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.55, 0.65, 0.8)
+corner_radius_top_left = 75
+corner_radius_top_right = 75
+corner_radius_bottom_right = 75
+corner_radius_bottom_left = 75
+
+[node name="Minimap" type="Control"]
+custom_minimum_size = Vector2(150, 150)
+layout_mode = 0
+mouse_filter = 2
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxMinimapBg")
+
+[node name="Border" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxMinimapBorder")
+
+[node name="MapLayer" type="Node2D" parent="."]
+script = ExtResource("1_minimap_script")
+
+[node name="ZoneLabel_Plaza" type="Label" parent="."]
+text = "Plaza"
+layout_mode = 0
+offset_left = 10.0
+offset_top = 4.0
+offset_right = 55.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(0.55, 0.55, 0.65, 0.7)
+theme_override_font_sizes/font_size = 9
+mouse_filter = 2
+
+[node name="ZoneLabel_Comercial" type="Label" parent="."]
+text = "Comercial"
+layout_mode = 0
+offset_left = 85.0
+offset_top = 4.0
+offset_right = 145.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(0.55, 0.55, 0.65, 0.7)
+theme_override_font_sizes/font_size = 9
+mouse_filter = 2
+
+[node name="ZoneLabel_Callejon" type="Label" parent="."]
+text = "Callejon"
+layout_mode = 0
+offset_left = 5.0
+offset_top = 130.0
+offset_right = 60.0
+offset_bottom = 145.0
+theme_override_colors/font_color = Color(0.55, 0.55, 0.65, 0.7)
+theme_override_font_sizes/font_size = 9
+mouse_filter = 2

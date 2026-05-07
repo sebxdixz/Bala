@@ -1,0 +1,101 @@
+[gd_resource type="Theme" load_steps=18 format=3 uid="uid://bslo_theme"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/inventory_background.png" id="tex_inv_bg"]
+[ext_resource type="Texture2D" path="res://assets/ui/inventory_grid.png" id="tex_inv_grid"]
+[ext_resource type="Texture2D" path="res://assets/ui/dialogue_box_callejero.png" id="tex_dia_callejero"]
+[ext_resource type="Texture2D" path="res://assets/ui/dialogue_box_yakuza.png" id="tex_dia_yakuza"]
+[ext_resource type="Texture2D" path="res://assets/ui/dialogue_box_system.png" id="tex_dia_system"]
+[ext_resource type="Texture2D" path="res://assets/ui/main_menu_bg.png" id="tex_menu_bg"]
+[ext_resource type="Texture2D" path="res://assets/ui/button_normal_hover.png" id="tex_btn_sheet"]
+[ext_resource type="Texture2D" path="res://assets/ui/rarity_borders_all.png" id="tex_rarity"]
+[ext_resource type="Texture2D" path="res://assets/ui/minimap_circular.png" id="tex_minimap"]
+[ext_resource type="Texture2D" path="res://assets/ui/hotbar_10_slots.png" id="tex_hotbar"]
+[ext_resource type="Texture2D" path="res://assets/ui/death_screen_overlay.png" id="tex_death"]
+[ext_resource type="Texture2D" path="res://assets/ui/loading_screen.png" id="tex_loading"]
+[ext_resource type="Texture2D" path="res://assets/ui/faction_emblems_sheet.png" id="tex_emblems"]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Barlow/Barlow-SemiBold.ttf" id="font_barlow"]
+[ext_resource type="FontFile" path="res://assets/fonts/Barlow/Barlow-Bold.ttf" id="font_barlow_bold"]
+[ext_resource type="FontFile" path="res://assets/fonts/PressStart2P/PressStart2P-Regular.ttf" id="font_pressstart"]
+
+[sub_resource type="StyleBoxTexture" id="panel_inventory"]
+texture = ExtResource("tex_inv_bg")
+expand_margin_left = 10.0
+expand_margin_top = 10.0
+expand_margin_right = 10.0
+expand_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxTexture" id="panel_dialogue_callejero"]
+texture = ExtResource("tex_dia_callejero")
+expand_margin_left = 20.0
+expand_margin_top = 20.0
+expand_margin_right = 20.0
+expand_margin_bottom = 20.0
+
+[sub_resource type="StyleBoxTexture" id="panel_minimap"]
+texture = ExtResource("tex_minimap")
+
+[sub_resource type="StyleBoxTexture" id="panel_death"]
+texture = ExtResource("tex_death")
+
+[sub_resource type="StyleBoxTexture" id="panel_loading"]
+texture = ExtResource("tex_loading")
+
+[sub_resource type="StyleBoxFlat" id="panel_dark"]
+bg_color = Color(0.08, 0.08, 0.12, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="button_normal"]
+bg_color = Color(0.1, 0.1, 0.14, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.0, 1.0, 1.0, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="button_hover"]
+bg_color = Color(0.15, 0.15, 0.22, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1.0, 0.0, 0.667, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[resource]
+; Default font
+default_font = ExtResource("font_barlow")
+default_font_size = 14
+
+; Panel styles
+Panel/styles/panel = SubResource("panel_dark")
+
+; Button styles
+Button/colors/font_color = Color(1, 1, 1, 1)
+Button/colors/font_focus_color = Color(1, 0, 0.667, 1)
+Button/fonts/font = ExtResource("font_barlow_bold")
+Button/font_sizes/font_size = 16
+Button/styles/normal = SubResource("button_normal")
+Button/styles/hover = SubResource("button_hover")
+
+; Label defaults
+Label/colors/font_color = Color(0.878, 0.878, 0.878, 1)
+Label/fonts/font = ExtResource("font_barlow")
+Label/font_sizes/font_size = 14
+
+; Inventory theme type
+Inventory/colors/font_color = Color(0.0, 1.0, 1.0, 1)
+Inventory/styles/panel = SubResource("panel_inventory")
+
+; Dialogue callejero theme type
+DialogueCallejero/styles/panel = SubResource("panel_dialogue_callejero")

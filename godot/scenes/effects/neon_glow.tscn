@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3 uid="uid://neon_glow_effect"]
+
+[ext_resource type="Script" path="res://scenes/effects/neon_glow.gd" id="1_neon_glow_script"]
+
+[node name="NeonGlow" type="OmniLight3D"]
+light_color = Color(1.0, 0.0, 1.0, 1.0)
+light_energy = 2.0
+omni_range = 6.0
+shadow_enabled = false
+light_indirect_energy = 0.5
+script = ExtResource("1_neon_glow_script")
+glow_color = Color(1.0, 0.0, 1.0, 1.0)
+glow_radius = 6.0
+flicker_enabled = false
+flicker_speed = 2.0

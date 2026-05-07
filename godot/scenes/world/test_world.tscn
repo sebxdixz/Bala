@@ -1,0 +1,933 @@
+[gd_scene format=3 uid="uid://el16em80jnwl"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_screen.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/ui/skill_tree.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/stats_panel.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/world/loot_item.tscn" id="6"]
+[ext_resource type="Script" uid="uid://crig7eam6lo1t" path="res://scripts/world/enemy_spawner.gd" id="7"]
+[ext_resource type="Script" uid="uid://cbhhxajmpaf8j" path="res://scripts/world/world_initializer.gd" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/world/building_tall.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/world/building_shop.tscn" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/world/road_segment.tscn" id="13"]
+[ext_resource type="PackedScene" path="res://scenes/ui/quest_log.tscn" id="12"]
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="14"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/shop_screen.tscn" id="8_shop"]
+
+[sub_resource type="Environment" id="env_default"]
+background_mode = 1
+background_color = Color(0.12, 0.08, 0.18, 1)
+ambient_light_color = Color(0.22, 0.15, 0.25, 1)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+tonemap_white = 2.0
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.012
+volumetric_fog_emission = Color(0.4, 0.1, 0.25, 1)
+volumetric_fog_emission_energy = 0.6
+
+[sub_resource type="StandardMaterial3D" id="mat_ground"]
+albedo_color = Color(0.29, 0.31, 0.3, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="box_ground"]
+material = SubResource("mat_ground")
+size = Vector3(200, 1, 200)
+
+[sub_resource type="BoxShape3D" id="box_ground_shape"]
+size = Vector3(200, 1, 200)
+
+[sub_resource type="StandardMaterial3D" id="mat_plaza_floor"]
+albedo_color = Color(0.2, 0.2, 0.22, 1)
+
+[sub_resource type="BoxMesh" id="box_plaza_tile"]
+material = SubResource("mat_plaza_floor")
+size = Vector3(30, 0.15, 30)
+
+[sub_resource type="StandardMaterial3D" id="mat_street"]
+albedo_color = Color(0.169, 0.176, 0.184, 1)
+roughness = 0.85
+
+[sub_resource type="BoxMesh" id="box_street_ns"]
+material = SubResource("mat_street")
+size = Vector3(10, 0.2, 190)
+
+[sub_resource type="BoxMesh" id="box_street_ew"]
+material = SubResource("mat_street")
+size = Vector3(190, 0.2, 10)
+
+[sub_resource type="BoxMesh" id="box_street_comm"]
+material = SubResource("mat_street")
+size = Vector3(8, 0.2, 70)
+
+[sub_resource type="BoxMesh" id="box_street_alley"]
+material = SubResource("mat_street")
+size = Vector3(5, 0.2, 40)
+
+[sub_resource type="StandardMaterial3D" id="mat_sidewalk"]
+albedo_color = Color(0.25, 0.25, 0.26, 1)
+
+[sub_resource type="BoxMesh" id="box_sidewalk_ns"]
+material = SubResource("mat_sidewalk")
+size = Vector3(4, 0.3, 190)
+
+[sub_resource type="BoxMesh" id="box_sidewalk_ew"]
+material = SubResource("mat_sidewalk")
+size = Vector3(190, 0.3, 4)
+
+[sub_resource type="StandardMaterial3D" id="mat_pole"]
+albedo_color = Color(0.18, 0.18, 0.18, 1)
+
+[sub_resource type="CylinderMesh" id="cyl_pole"]
+material = SubResource("mat_pole")
+top_radius = 0.25
+bottom_radius = 0.25
+height = 5.0
+
+[sub_resource type="SphereMesh" id="sphere_globe"]
+radius = 0.35
+height = 0.55
+
+[sub_resource type="StandardMaterial3D" id="mat_globe_orange"]
+albedo_color = Color(1, 0.5, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.4, 0, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="mat_globe_magenta"]
+albedo_color = Color(0.9, 0.1, 0.5, 1)
+emission_enabled = true
+emission = Color(1, 0, 0.5, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="StandardMaterial3D" id="mat_globe_cyan"]
+albedo_color = Color(0.1, 0.8, 0.9, 1)
+emission_enabled = true
+emission = Color(0, 0.8, 1, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="StandardMaterial3D" id="mat_dumpster"]
+albedo_color = Color(0.2, 0.25, 0.18, 1)
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="box_dumpster"]
+material = SubResource("mat_dumpster")
+size = Vector3(2, 1.5, 1.5)
+
+[sub_resource type="StandardMaterial3D" id="mat_dumpster_lid"]
+albedo_color = Color(0.15, 0.2, 0.13, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="box_dumpster_lid"]
+material = SubResource("mat_dumpster_lid")
+size = Vector3(2.05, 0.08, 1.55)
+
+[sub_resource type="StandardMaterial3D" id="mat_bench_seat"]
+albedo_color = Color(0.4, 0.25, 0.15, 1)
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="box_bench_seat"]
+material = SubResource("mat_bench_seat")
+size = Vector3(2, 0.1, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="mat_bench_leg"]
+albedo_color = Color(0.25, 0.25, 0.25, 1)
+metallic = 0.5
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="box_bench_leg"]
+material = SubResource("mat_bench_leg")
+size = Vector3(0.1, 0.4, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="mat_hydrant"]
+albedo_color = Color(0.7, 0.1, 0.05, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="cyl_hydrant"]
+material = SubResource("mat_hydrant")
+top_radius = 0.15
+bottom_radius = 0.15
+height = 0.8
+
+[sub_resource type="StandardMaterial3D" id="mat_trashcan"]
+albedo_color = Color(0.35, 0.35, 0.35, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="cyl_trashcan"]
+material = SubResource("mat_trashcan")
+top_radius = 0.2
+bottom_radius = 0.2
+height = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_magenta"]
+albedo_color = Color(1, 0, 0.6, 1)
+emission_enabled = true
+emission = Color(0.3, 0, 0.18, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="BoxMesh" id="box_graffiti_wall"]
+size = Vector3(8, 3, 0.05)
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_cyan"]
+albedo_color = Color(0, 0.9, 0.9, 1)
+emission_enabled = true
+emission = Color(0, 0.27, 0.27, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_orange"]
+albedo_color = Color(1, 0.45, 0, 1)
+emission_enabled = true
+emission = Color(0.3, 0.135, 0, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_neon_sign"]
+albedo_color = Color(1, 0, 0.667, 1)
+emission_enabled = true
+emission = Color(1, 0, 0.667, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="BoxMesh" id="box_neon_sign"]
+material = SubResource("mat_neon_sign")
+size = Vector3(5, 1, 0.12)
+
+[node name="TestWorld" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.5, 0, 0.5, 0.866025, 0, 0, 0, 1, 0, 30, 0)
+light_color = Color(1, 0.85, 0.65, 1)
+light_energy = 1.2
+shadow_enabled = true
+shadow_bias = 0.08
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env_default")
+
+[node name="GroundBody" type="StaticBody3D" parent="."]
+
+[node name="Ground" type="MeshInstance3D" parent="GroundBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+mesh = SubResource("box_ground")
+
+[node name="CollisionGround" type="CollisionShape3D" parent="GroundBody"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("box_ground_shape")
+
+[node name="PlazaFloor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
+mesh = SubResource("box_plaza_tile")
+
+[node name="Street_NS_North" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -45)
+mesh = SubResource("box_street_ns")
+
+[node name="Street_NS_South" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 45)
+mesh = SubResource("box_street_ns")
+
+[node name="Street_EW_West" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0.1, 0)
+mesh = SubResource("box_street_ew")
+
+[node name="Street_EW_East" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0.1, 0)
+mesh = SubResource("box_street_ew")
+
+[node name="Street_Commercial" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.1, -55)
+mesh = SubResource("box_street_comm")
+
+[node name="Street_Alley" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -55, 0.1, -70)
+mesh = SubResource("box_street_alley")
+
+[node name="Sidewalk_NS_West" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0.15, 0)
+mesh = SubResource("box_sidewalk_ns")
+
+[node name="Sidewalk_NS_East" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0.15, 0)
+mesh = SubResource("box_sidewalk_ns")
+
+[node name="Sidewalk_EW_North" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -7)
+mesh = SubResource("box_sidewalk_ew")
+
+[node name="Sidewalk_EW_South" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 7)
+mesh = SubResource("box_sidewalk_ew")
+[node name="Buildings_Plaza_NW" type="Node3D" parent="."]
+
+[node name="Bld_NW_A" parent="Buildings_Plaza_NW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 12.5, -28)
+body_color = Color(0.227, 0.235, 0.231, 1)
+window_color = Color(1, 0.75, 0.15, 1)
+
+[node name="Bld_NW_B" parent="Buildings_Plaza_NW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 12.5, -28)
+body_color = Color(0.2, 0.22, 0.25, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+has_neon = true
+
+[node name="Bld_NW_C" parent="Buildings_Plaza_NW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 12.5, -20)
+body_color = Color(0.25, 0.2, 0.2, 1)
+window_color = Color(0.3, 0.8, 1, 1)
+
+[node name="Bld_NW_D" parent="Buildings_Plaza_NW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 12.5, -20)
+body_color = Color(0.3, 0.25, 0.18, 1)
+window_color = Color(1, 0.7, 0.15, 1)
+
+[node name="Buildings_Plaza_NE" type="Node3D" parent="."]
+
+[node name="Bld_NE_A" parent="Buildings_Plaza_NE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 12.5, -28)
+body_color = Color(0.29, 0.306, 0.302, 1)
+window_color = Color(1, 0.7, 0.2, 1)
+
+[node name="Bld_NE_B" parent="Buildings_Plaza_NE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 12.5, -28)
+body_color = Color(0.176, 0.106, 0.306, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+has_neon = true
+neon_color = Color(0, 1, 1, 1)
+
+[node name="Bld_NE_C" parent="Buildings_Plaza_NE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 12.5, -20)
+body_color = Color(0.22, 0.24, 0.22, 1)
+window_color = Color(1, 0.75, 0.15, 1)
+
+[node name="Bld_NE_D" parent="Buildings_Plaza_NE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 12.5, -20)
+body_color = Color(0.18, 0.2, 0.28, 1)
+window_color = Color(0.3, 0.8, 1, 1)
+
+[node name="Buildings_Plaza_SW" type="Node3D" parent="."]
+
+[node name="Bld_SW_A" parent="Buildings_Plaza_SW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 12.5, 28)
+body_color = Color(0.102, 0.235, 0.235, 1)
+window_color = Color(0.3, 0.9, 0.9, 1)
+
+[node name="Bld_SW_B" parent="Buildings_Plaza_SW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 12.5, 28)
+body_color = Color(0.29, 0.208, 0.157, 1)
+window_color = Color(1, 0.7, 0.2, 1)
+
+[node name="Bld_SW_C" parent="Buildings_Plaza_SW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 12.5, 20)
+body_color = Color(0.24, 0.22, 0.18, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+
+[node name="Bld_SW_D" parent="Buildings_Plaza_SW" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 12.5, 20)
+body_color = Color(0.2, 0.26, 0.24, 1)
+window_color = Color(1, 0.75, 0.15, 1)
+
+[node name="Buildings_Plaza_SE" type="Node3D" parent="."]
+
+[node name="Bld_SE_A" parent="Buildings_Plaza_SE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 12.5, 28)
+body_color = Color(0.102, 0.165, 0.29, 1)
+window_color = Color(1, 0.8, 0.15, 1)
+has_neon = true
+
+[node name="Bld_SE_B" parent="Buildings_Plaza_SE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 12.5, 28)
+body_color = Color(0.29, 0.306, 0.302, 1)
+window_color = Color(0.3, 0.8, 1, 1)
+
+[node name="Bld_SE_C" parent="Buildings_Plaza_SE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 12.5, 20)
+body_color = Color(0.2, 0.2, 0.25, 1)
+window_color = Color(1, 0.75, 0.2, 1)
+
+[node name="Bld_SE_D" parent="Buildings_Plaza_SE" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 12.5, 20)
+body_color = Color(0.25, 0.22, 0.28, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+[node name="Buildings_West" type="Node3D" parent="."]
+
+[node name="Bld_W_A" parent="Buildings_West" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 12.5, -14)
+body_color = Color(0.361, 0.239, 0.18, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+
+[node name="Bld_W_B" parent="Buildings_West" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 12.5, 0)
+body_color = Color(0.3, 0.25, 0.2, 1)
+window_color = Color(1, 0.7, 0.15, 1)
+has_neon = true
+neon_color = Color(0, 1, 1, 1)
+
+[node name="Bld_W_C" parent="Buildings_West" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -42, 12.5, 14)
+body_color = Color(0.22, 0.26, 0.24, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+
+[node name="Buildings_East" type="Node3D" parent="."]
+
+[node name="Bld_E_A" parent="Buildings_East" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 12.5, -14)
+body_color = Color(0.176, 0.106, 0.306, 1)
+window_color = Color(0.3, 0.8, 1, 1)
+has_neon = true
+
+[node name="Bld_E_B" parent="Buildings_East" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 12.5, 0)
+body_color = Color(0.24, 0.2, 0.28, 1)
+window_color = Color(1, 0.8, 0.2, 1)
+
+[node name="Bld_E_C" parent="Buildings_East" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42, 12.5, 14)
+body_color = Color(0.29, 0.306, 0.302, 1)
+window_color = Color(1, 0.7, 0.15, 1)
+
+[node name="Buildings_Outer" type="Node3D" parent="."]
+
+[node name="Bld_Outer_NW" parent="Buildings_Outer" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -75, 12.5, 15)
+body_color = Color(0.361, 0.239, 0.18, 1)
+window_color = Color(1, 0.7, 0.15, 1)
+
+[node name="Bld_Outer_NE" parent="Buildings_Outer" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75, 12.5, -25)
+body_color = Color(0.176, 0.106, 0.306, 1)
+window_color = Color(0.3, 0.8, 1, 1)
+
+[node name="Bld_Outer_SE" parent="Buildings_Outer" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 12.5, 65)
+body_color = Color(0.102, 0.235, 0.235, 1)
+window_color = Color(0.3, 0.9, 0.9, 1)
+
+[node name="Bld_Outer_SW" parent="Buildings_Outer" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 12.5, 72)
+body_color = Color(0.102, 0.165, 0.29, 1)
+window_color = Color(1, 0.8, 0.15, 1)
+has_neon = true
+[node name="Buildings_Commercial" type="Node3D" parent="."]
+
+[node name="Shop_01" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 4, -85)
+body_color = Color(0.29, 0.102, 0.239, 1)
+window_color = Color(1, 0.85, 0.3, 1)
+sign_color = Color(1, 0, 0.667, 1)
+
+[node name="Shop_02" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 4, -73)
+body_color = Color(0.102, 0.361, 0.361, 1)
+window_color = Color(1, 0.9, 0.3, 1)
+sign_color = Color(0, 1, 1, 1)
+has_balcony = true
+
+[node name="Shop_03" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 4, -61)
+body_color = Color(0.239, 0.29, 0.18, 1)
+window_color = Color(1, 0.85, 0.3, 1)
+sign_color = Color(1, 0, 0.667, 1)
+
+[node name="Shop_04" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 4, -49)
+body_color = Color(0.29, 0.239, 0.18, 1)
+window_color = Color(1, 0.85, 0.3, 1)
+sign_color = Color(0, 1, 1, 1)
+has_balcony = true
+
+[node name="Shop_05" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 4, -85)
+body_color = Color(0.239, 0.29, 0.29, 1)
+window_color = Color(0.3, 0.9, 0.9, 1)
+sign_color = Color(1, 0, 0.667, 1)
+
+[node name="Shop_06" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 4, -73)
+body_color = Color(0.29, 0.176, 0.102, 1)
+window_color = Color(1, 0.85, 0.3, 1)
+sign_color = Color(0, 1, 1, 1)
+has_balcony = true
+
+[node name="Shop_07" parent="Buildings_Commercial" instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 4, -61)
+body_color = Color(0.29, 0.102, 0.18, 1)
+window_color = Color(1, 0.85, 0.3, 1)
+sign_color = Color(1, 0, 0.667, 1)
+
+[node name="Buildings_Alley" type="Node3D" parent="."]
+
+[node name="Alley_A" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 12.5, -80)
+body_color = Color(0.12, 0.1, 0.08, 1)
+window_color = Color(1, 0.4, 0.05, 1)
+
+[node name="Alley_B" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 12.5, -80)
+body_color = Color(0.15, 0.13, 0.1, 1)
+window_color = Color(1, 0.5, 0.1, 1)
+has_neon = true
+
+[node name="Alley_C" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 12.5, -60)
+body_color = Color(0.1, 0.12, 0.14, 1)
+window_color = Color(0.3, 0.6, 1, 1)
+
+[node name="Alley_D" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 12.5, -60)
+body_color = Color(0.18, 0.15, 0.12, 1)
+window_color = Color(1, 0.45, 0.08, 1)
+
+[node name="Alley_E" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 12.5, -72)
+body_color = Color(0.13, 0.11, 0.09, 1)
+window_color = Color(1, 0.35, 0, 1)
+
+[node name="Alley_F" parent="Buildings_Alley" instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 12.5, -56)
+body_color = Color(0.16, 0.14, 0.11, 1)
+window_color = Color(1, 0.5, 0.1, 1)
+has_neon = true
+
+[node name="RoadSegments" type="Node3D" parent="."]
+
+[node name="Road_NS_North_Ext" parent="RoadSegments" instance=ExtResource("13")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -110)
+
+[node name="Road_NS_South_Ext" parent="RoadSegments" instance=ExtResource("13")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 110)
+
+[node name="Road_EW_West_Ext" parent="RoadSegments" instance=ExtResource("13")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -110, 0, 0)
+
+[node name="Road_EW_East_Ext" parent="RoadSegments" instance=ExtResource("13")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 110, 0, 0)
+[node name="LampPole_NS_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -80)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -80)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_1" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -80)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_NS_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -55)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -55)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -55)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_NS_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -25)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -25)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_3" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 5, -25)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_NS_4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -80)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -80)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_4" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -80)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_NS_5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -55)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -55)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_5" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -55)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_NS_6" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -25)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_NS_6" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -25)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_NS_6" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 5, -25)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+[node name="LampPole_EW_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 2.5, 3)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_EW_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 3)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_EW_1" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -80, 5, 3)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_EW_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -55, 2.5, 3)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_EW_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -55, 5, 3)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_EW_2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -55, 5, 3)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_EW_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 2.5, 3)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_EW_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 5, 3)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_EW_3" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 5, 3)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_EW_4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 2.5, 3)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_EW_4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 5, 3)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_EW_4" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 5, 3)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_EW_5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2.5, 3)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_EW_5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, 3)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_EW_5" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, 3)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="LampPole_Comm_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2.5, -80)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_Comm_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -80)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_magenta")
+
+[node name="PtLight_Comm_1" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -80)
+light_color = Color(1, 0, 0.667, 1)
+light_energy = 2.0
+omni_range = 10.0
+
+[node name="LampPole_Comm_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2.5, -60)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_Comm_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -60)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_cyan")
+
+[node name="PtLight_Comm_2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -60)
+light_color = Color(0, 1, 1, 1)
+light_energy = 2.0
+omni_range = 10.0
+
+[node name="LampPole_Comm_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 2.5, -40)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_Comm_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -40)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_magenta")
+
+[node name="PtLight_Comm_3" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 5, -40)
+light_color = Color(1, 0, 0.667, 1)
+light_energy = 2.0
+omni_range = 10.0
+[node name="LampPole_Alley_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 2.5, -76)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_Alley_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 5, -76)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_Alley_1" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 5, -76)
+light_color = Color(1, 0.4, 0.05, 1)
+light_energy = 1.5
+omni_range = 8.0
+
+[node name="LampPole_Alley_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 2.5, -64)
+mesh = SubResource("cyl_pole")
+
+[node name="LampGlobe_Alley_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 5, -64)
+mesh = SubResource("sphere_globe")
+surface_material_override/0 = SubResource("mat_globe_orange")
+
+[node name="PtLight_Alley_2" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 5, -64)
+light_color = Color(1, 0.4, 0.05, 1)
+light_energy = 1.5
+omni_range = 8.0
+
+[node name="Dumpster_Alley_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 0.75, -74)
+mesh = SubResource("box_dumpster")
+
+[node name="DumpsterLid_Alley_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0, 0.342, 0, 1, 0, -0.342, 0, 0.94, -52, 1.54, -74)
+mesh = SubResource("box_dumpster_lid")
+
+[node name="Dumpster_Alley_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 0.75, -60)
+mesh = SubResource("box_dumpster")
+
+[node name="DumpsterLid_Alley_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0, -0.342, 0, 1, 0, 0.342, 0, 0.94, -44, 1.54, -60)
+mesh = SubResource("box_dumpster_lid")
+
+[node name="Dumpster_Comm_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 0.75, -78)
+mesh = SubResource("box_dumpster")
+
+[node name="DumpsterLid_Comm_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0, 0.342, 0, 1, 0, -0.342, 0, 0.94, 52, 1.54, -78)
+mesh = SubResource("box_dumpster_lid")
+
+[node name="Bench_Plaza_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0.45, 8)
+mesh = SubResource("box_bench_seat")
+
+[node name="BenchLeg_P1A" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.15, 0.2, 8.15)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P1B" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.85, 0.2, 8.15)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P1C" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.15, 0.2, 7.85)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P1D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.85, 0.2, 7.85)
+mesh = SubResource("box_bench_leg")
+
+[node name="Bench_Plaza_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.45, 8)
+mesh = SubResource("box_bench_seat")
+
+[node name="BenchLeg_P2A" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.85, 0.2, 8.15)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P2B" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.15, 0.2, 8.15)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P2C" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.85, 0.2, 7.85)
+mesh = SubResource("box_bench_leg")
+
+[node name="BenchLeg_P2D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.15, 0.2, 7.85)
+mesh = SubResource("box_bench_leg")
+
+[node name="Hydrant_Street" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.4, -30)
+mesh = SubResource("cyl_hydrant")
+
+[node name="TrashCan_Plaza" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.35, -10)
+mesh = SubResource("cyl_trashcan")
+
+[node name="TrashCan_Alley" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 0.35, -66)
+mesh = SubResource("cyl_trashcan")
+
+[node name="GraffitiWall_Alley_1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 1.5, -48)
+mesh = SubResource("box_graffiti_wall")
+surface_material_override/0 = SubResource("mat_graffiti_magenta")
+
+[node name="GraffitiWall_Alley_2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 1.5, -48)
+mesh = SubResource("box_graffiti_wall")
+surface_material_override/0 = SubResource("mat_graffiti_cyan")
+
+[node name="GraffitiWall_Alley_3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 2, -46)
+mesh = SubResource("box_graffiti_wall")
+surface_material_override/0 = SubResource("mat_graffiti_orange")
+
+[node name="NeonSign_Alley" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 22, -76)
+mesh = SubResource("box_neon_sign")
+
+[node name="PtLight_Plaza_Center" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 0)
+light_color = Color(0.2, 0.6, 1, 1)
+light_energy = 3.0
+omni_range = 18.0
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 3)
+
+[node name="SpawnPoint2" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+
+[node name="HUD" parent="." instance=ExtResource("2")]
+
+[node name="InventoryScreen" parent="." instance=ExtResource("3")]
+
+[node name="SkillTree" parent="." instance=ExtResource("4")]
+
+[node name="StatsPanel" parent="." instance=ExtResource("5")]
+
+[node name="SettingsMenu" parent="." instance=ExtResource("14")]
+
+[node name="QuestLog" parent="." instance=ExtResource("12")]
+
+[node name="EnemySpawn_Plaza_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.2, 5)
+
+[node name="EnemySpawn_Plaza_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.2, -5)
+
+[node name="EnemySpawn_Alley_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0.2, -70)
+
+[node name="EnemySpawn_Alley_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -46, 0.2, -62)
+
+[node name="EnemySpawn_Shop_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.2, -75)
+
+[node name="EnemySpawn_Shop_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 0.2, -50)
+
+[node name="VendorSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.2, 10)
+
+[node name="GuideSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.2, 8)
+
+
+[node name="PatrolWP_Plaza_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.2, 8)
+
+[node name="PatrolWP_Plaza_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.2, 8)
+
+[node name="PatrolWP_Plaza_03" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.2, -8)
+
+[node name="PatrolWP_Plaza_04" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.2, -8)
+
+[node name="PatrolWP_Comm_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.2, -85)
+
+[node name="PatrolWP_Comm_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.2, -65)
+
+[node name="PatrolWP_Comm_03" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.2, -45)
+
+[node name="PatrolWP_Alley_01" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 0.2, -72)
+
+[node name="PatrolWP_Alley_02" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -44, 0.2, -60)
+
+[node name="EnemySpawner" type="Node" parent="."]
+script = ExtResource("7")
+
+[node name="LootTaco" parent="." instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.3, 8)
+item_id = "taco_callejero"
+
+[node name="LootPistol" parent="." instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55, 0.3, -60)
+item_id = "pistol_9mm"
+
+[node name="LootMoney" parent="." instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -52, 0.3, -72)
+pb_amount = 100
+
+
+[node name="ShopScreen" parent="." instance=ExtResource("8_shop")]
+
+[node name="RespawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 5)
+[node name="WorldInitializer" type="Node" parent="."]
+script = ExtResource("9")

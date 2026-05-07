@@ -1,0 +1,66 @@
+[gd_resource type="Resource" load_steps=12 format=3 uid="uid://bslo_materials"]
+
+[ext_resource type="Script" path="res://scripts/bslo_materials.gd" id="1_mat_script"]
+
+[sub_resource type="StandardMaterial3D" id="mat_player_body"]
+albedo_color = Color(0.18, 0.18, 0.22, 1)
+roughness = 0.7
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_player_head"]
+albedo_color = Color(0.85, 0.75, 0.6, 1)
+roughness = 0.5
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_npc_hostile"]
+albedo_color = Color(0.35, 0.18, 0.15, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_npc_friendly"]
+albedo_color = Color(0.25, 0.3, 0.25, 1)
+roughness = 0.7
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_yakuza_body"]
+albedo_color = Color(0.05, 0.05, 0.08, 1)
+roughness = 0.4
+metallic = 0.1
+
+[sub_resource type="StandardMaterial3D" id="mat_cartel_body"]
+albedo_color = Color(0.55, 0.18, 0.12, 1)
+roughness = 0.9
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_mafia_body"]
+albedo_color = Color(0.08, 0.1, 0.22, 1)
+roughness = 0.5
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_policia_body"]
+albedo_color = Color(0.1, 0.15, 0.35, 1)
+roughness = 0.5
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_cholos_body"]
+albedo_color = Color(0.15, 0.15, 0.17, 1)
+roughness = 0.8
+metallic = 0.0
+
+[sub_resource type="StandardMaterial3D" id="mat_sinlegaja_body"]
+albedo_color = Color(0.28, 0.24, 0.22, 1)
+roughness = 0.7
+metallic = 0.0
+
+[resource]
+script = ExtResource("1_mat_script")
+mat_player_body = SubResource("mat_player_body")
+mat_player_head = SubResource("mat_player_head")
+mat_npc_hostile = SubResource("mat_npc_hostile")
+mat_npc_friendly = SubResource("mat_npc_friendly")
+mat_yakuza_body = SubResource("mat_yakuza_body")
+mat_cartel_body = SubResource("mat_cartel_body")
+mat_mafia_body = SubResource("mat_mafia_body")
+mat_policia_body = SubResource("mat_policia_body")
+mat_cholos_body = SubResource("mat_cholos_body")
+mat_sinlegaja_body = SubResource("mat_sinlegaja_body")

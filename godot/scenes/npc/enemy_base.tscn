@@ -1,0 +1,42 @@
+[gd_scene load_steps=7 format=3 uid="uid://enemy_base"]
+
+[ext_resource type="Script" path="res://scripts/npc/npc_base.gd" id="1_npc_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/enemy_healthbar.tscn" id="2_hb_scene"]
+[ext_resource type="Script" path="res://scripts/ui/enemy_healthbar.gd" id="3_hb_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape"]
+radius = 0.4
+height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxBody"]
+size = Vector3(0.7, 1.6, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxHead"]
+size = Vector3(0.25, 0.25, 0.25)
+
+[node name="Enemy" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_npc_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxBody")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+
+[node name="Head" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxHead")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+
+[node name="HealthBar" parent="." instance=ExtResource("2_hb_scene")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+
+[node name="DetectionArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="DetectionShape" type="CollisionShape3D" parent="DetectionArea"]
+shape = SubResource("CapsuleShape")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)

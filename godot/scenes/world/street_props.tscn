@@ -1,0 +1,168 @@
+[gd_scene format=3 uid="uid://dd5ddj0pq7iyy"]
+
+[sub_resource type="StandardMaterial3D" id="mat_pole"]
+albedo_color = Color(0.18, 0.18, 0.18, 1)
+metallic = 0.4
+roughness = 0.7
+
+[sub_resource type="CylinderMesh" id="mesh_pole"]
+material = SubResource("mat_pole")
+top_radius = 0.1
+bottom_radius = 0.1
+height = 5.0
+
+[sub_resource type="StandardMaterial3D" id="mat_lamp_globe"]
+albedo_color = Color(1, 0.5, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.4, 0, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="SphereMesh" id="mesh_lamp_globe"]
+material = SubResource("mat_lamp_globe")
+radius = 0.3
+height = 0.5
+
+[sub_resource type="StandardMaterial3D" id="mat_dumpster_body"]
+albedo_color = Color(0.2, 0.25, 0.18, 1)
+roughness = 0.75
+
+[sub_resource type="BoxMesh" id="mesh_dumpster_body"]
+material = SubResource("mat_dumpster_body")
+size = Vector3(1.5, 1.2, 1)
+
+[sub_resource type="StandardMaterial3D" id="mat_dumpster_lid"]
+albedo_color = Color(0.15, 0.2, 0.13, 1)
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="mesh_dumpster_lid"]
+material = SubResource("mat_dumpster_lid")
+size = Vector3(1.55, 0.08, 1.05)
+
+[sub_resource type="StandardMaterial3D" id="mat_bench_seat"]
+albedo_color = Color(0.4, 0.25, 0.15, 1)
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="mesh_bench_seat"]
+material = SubResource("mat_bench_seat")
+size = Vector3(2, 0.1, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="mat_bench_leg"]
+albedo_color = Color(0.25, 0.25, 0.25, 1)
+metallic = 0.5
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="mesh_bench_leg"]
+material = SubResource("mat_bench_leg")
+size = Vector3(0.1, 0.4, 0.1)
+
+[sub_resource type="StandardMaterial3D" id="mat_hydrant"]
+albedo_color = Color(0.7, 0.1, 0.05, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="mesh_hydrant"]
+material = SubResource("mat_hydrant")
+top_radius = 0.15
+bottom_radius = 0.15
+height = 0.8
+
+[sub_resource type="StandardMaterial3D" id="mat_trashcan"]
+albedo_color = Color(0.35, 0.35, 0.35, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="mesh_trashcan"]
+material = SubResource("mat_trashcan")
+top_radius = 0.2
+bottom_radius = 0.2
+height = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_1"]
+albedo_color = Color(1, 0, 0.6, 1)
+emission_enabled = true
+emission = Color(0.3, 0, 0.18, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_2"]
+albedo_color = Color(0, 0.9, 0.9, 1)
+emission_enabled = true
+emission = Color(0, 0.27, 0.27, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="StandardMaterial3D" id="mat_graffiti_3"]
+albedo_color = Color(1, 0.45, 0, 1)
+emission_enabled = true
+emission = Color(0.3, 0.135, 0, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="BoxMesh" id="mesh_graffiti"]
+size = Vector3(6, 3, 0.05)
+
+[node name="StreetProps" type="Node3D"]
+
+[node name="Lamppost" type="Node3D" parent="."]
+
+[node name="Pole" type="MeshInstance3D" parent="Lamppost"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+mesh = SubResource("mesh_pole")
+
+[node name="Globe" type="MeshInstance3D" parent="Lamppost"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+mesh = SubResource("mesh_lamp_globe")
+
+[node name="PointLight3D" type="OmniLight3D" parent="Lamppost"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5, 0)
+light_color = Color(1, 0.55, 0.15, 1)
+light_energy = 2.5
+omni_range = 14.0
+
+[node name="Dumpster" type="Node3D" parent="."]
+
+[node name="BodyDump" type="MeshInstance3D" parent="Dumpster"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("mesh_dumpster_body")
+
+[node name="LidDump" type="MeshInstance3D" parent="Dumpster"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 0, 1.24, 0)
+mesh = SubResource("mesh_dumpster_lid")
+
+[node name="Bench" type="Node3D" parent="."]
+
+[node name="Seat" type="MeshInstance3D" parent="Bench"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("mesh_bench_seat")
+
+[node name="LegL" type="MeshInstance3D" parent="Bench"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0.2, 0.15)
+mesh = SubResource("mesh_bench_leg")
+
+[node name="LegR" type="MeshInstance3D" parent="Bench"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0.2, 0.15)
+mesh = SubResource("mesh_bench_leg")
+
+[node name="LegLB" type="MeshInstance3D" parent="Bench"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.85, 0.2, -0.15)
+mesh = SubResource("mesh_bench_leg")
+
+[node name="LegRB" type="MeshInstance3D" parent="Bench"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.85, 0.2, -0.15)
+mesh = SubResource("mesh_bench_leg")
+
+[node name="FireHydrant" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("mesh_hydrant")
+
+[node name="TrashCan" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+mesh = SubResource("mesh_trashcan")
+
+[node name="GraffitiWall1" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_graffiti")
+surface_material_override/0 = SubResource("mat_graffiti_1")
+
+[node name="GraffitiWall2" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_graffiti")
+surface_material_override/0 = SubResource("mat_graffiti_2")
+
+[node name="GraffitiWall3" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_graffiti")
+surface_material_override/0 = SubResource("mat_graffiti_3")

@@ -1,9 +1,41 @@
-# Ejecutables de Godot (no subirlos al repo - muy pesados)
-godot-engine/*.exe
+# Barrio Sin Ley Online — .gitignore
 
-# Proyecto de prueba vacío
-sd-s/
+# Godot engine
+godot/.godot/
+godot/export/
+*.translation
+*.import
 
-# Archivos de sistema
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build
+godot/build/
+*.exe
+*.dll
+*.pck
+*.zip
+
+# Logs
+*.log
+
+# Avoid committing project.addons (godot plugin binary files) unless needed
+# godot/addons/*/bin/
+
+# Keep only project files
+*.blend1
+*.blend2

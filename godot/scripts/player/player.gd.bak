@@ -1,0 +1,698 @@
+# ============================================================
+# player.gd � Controlador principal del personaje
+# Barrio Sin Ley Online (BSLO)
+# CharacterBody3D con:
+#   - Movimiento WASD + sprint (Shift) + roll (doble-tap)
+#   - Camara 3ra persona con rotacion de mouse (scroll zoom)
+#   - Toggle a 1ra persona con tecla V
+#   - Escape para soltar/capturar mouse
+#   - Sistema de 6 stats, HP, stamina, death state
+#   - Debug overlay (F1): HP, Stamina, PlayerState, Position
+#   - Footsteps cada 0.5s al moverse
+#   - Actualizacion de HUD cada frame (incluye XP)
+#   - Sistema de clase y habilidades con cooldowns
+#   - Toggle de arbol de habilidades (K) y panel de stats (P)
+#   - Reacciona a level up con flash verde y actualizacion de UI
+# ============================================================
+extends CharacterBody3D
+
+# Senales
+signal player_died()
+signal player_took_damage(amount: int, damage_type: String, attacker: Node)
+signal stats_changed(stat_name: String, new_value: int)
+signal health_changed(current_hp: int, max_hp: int)
+signal stamina_changed(current_stamina: int, max_stamina: int)
+signal camera_toggled(is_first_person: bool)
+signal rolled()
+
+# Nodos hijos
+@onready var camera_pivot: Node3D = $CameraPivot
+@onready var camera_3d: Camera3D = $CameraPivot/Camera3D
+@onready var mesh_instance: MeshInstance3D = $MeshInstance3D
+@onready var collision_shape: CollisionShape3D = $CollisionShape3D
+
+# Export vars (configurables desde el editor)
+@export var walk_speed: float = 5.0
+@export var sprint_speed: float = 9.0
+@export var roll_speed: float = 12.0
+@export var acceleration: float = 8.0
+@export var air_control: float = 0.3
+@export var jump_velocity: float = 6.0
+@export var mouse_sensitivity: float = 0.002
+@export var camera_distance: float = 5.0
+@export var camera_min_distance: float = 3.0
+@export var camera_max_distance: float = 8.0
+@export var camera_angle_min: float = -40.0
+@export var camera_angle_max: float = 70.0
+@export var camera_smooth_speed: float = 10.0
+
+# Estados
+enum PlayerState { IDLE, WALKING, SPRINTING, ROLLING, DEAD, STUNNED }
+
+@export var current_state: PlayerState = PlayerState.IDLE
+var is_first_person: bool = false
+var is_moving: bool = false
+var is_grounded: bool = true
+var can_move: bool = true
+
+# Input
+var input_dir: Vector2 = Vector2.ZERO
+var mouse_motion: Vector2 = Vector2.ZERO
+var camera_rotation_x: float = 0.0
+var camera_rotation_y: float = 0.0
+
+# Roll (doble-tap)
+var last_directional_key_time: float = 0.0
+var last_directional_key: String = ""
+const DOUBLE_TAP_TIME: float = 0.25
+var is_rolling: bool = false
+var roll_direction: Vector3 = Vector3.FORWARD
+var roll_timer: float = 0.0
+const ROLL_DURATION: float = 0.4
+
+# Sprint
+var is_sprinting: bool = false
+
+# HP y stamina (delegados a StatsManager pero con cache local)
+var current_hp: int = 100
+var max_hp: int = 100
+var current_stamina: int = 50
+var max_stamina: int = 50
+
+# Footstep timer
+var footstep_timer: float = 0.0
+const FOOTSTEP_INTERVAL: float = 0.5
+
+# Debug overlay
+var debug_overlay_visible: bool = false
+var debug_key_was_pressed: bool = false
+var hud_node: CanvasLayer = null
+
+# Zoom smoothing
+var target_camera_distance: float = 5.0
+var current_camera_distance: float = 5.0
+
+# Level up flash overlay
+var flash_overlay: ColorRect = null
+
+# ----------------------------------------------
+# CLASE Y FACCION
+# ----------------------------------------------
+var current_class_id: String = "tanque"
+var player_faction: String = "YAKUZA"
+var _class_setup_done: bool = false
+
+# ----------------------------------------------
+# HABILIDADES (SKILLS)
+# ----------------------------------------------
+var class_skills: Array = []  # Array[SkillData] para hotbar activa
+var skill_cooldowns: Dictionary = {}
+
+# ----------------------------------------------
+# UI OVERLAYS
+# ----------------------------------------------
+var skill_tree_overlay: CanvasLayer = null
+var stats_panel_overlay: CanvasLayer = null
+
+func _ready():
+    print("PLAYER _ready() START")
+    add_to_group("players")
+    print("PLAYER added to players group - vivos!")
+    global_position = Vector3(0, 0.2, 5)
+    if StatsManager:
+        StatsManager.health_changed.connect(_on_stats_health_changed)
+        StatsManager.stamina_changed.connect(_on_stats_stamina_changed)
+        StatsManager.player_died.connect(_on_player_died)
+        StatsManager.leveled_up.connect(_on_leveled_up)
+        current_hp = StatsManager.current_hp
+        max_hp = StatsManager.max_hp
+        current_stamina = StatsManager.current_stamina
+        max_stamina = StatsManager.max_stamina
+    call_deferred("_find_hud")
+    call_deferred("_setup_class")
+    print("PLAYER _ready() COMPLETE")
+
+func _find_hud():
+    var huds = get_tree().get_nodes_in_group("hud")
+    if huds.size() > 0:
+        hud_node = huds[0]
+        print("Player: HUD encontrado")
+
+func _setup_class():
+    """Configura la clase del jugador: stats, habilidades, HUD."""
+    if _class_setup_done:
+        return
+    if current_class_id == "":
+        return
+
+    if not ClassManager:
+        push_error("Player: ClassManager no disponible")
+        return
+
+    var class_data = ClassManager.get_class_data(current_class_id)
+    if class_data == null:
+        push_error("Player: Clase no encontrada: ", current_class_id)
+        return
+
+    # Aplicar modificadores de clase a StatsManager
+    if StatsManager:
+        StatsManager.apply_class_modifiers(class_data)
+
+    # Cargar habilidades de clase activas (hotbar_slot >= 1)
+    class_skills.clear()
+    for skill in class_data.skills:
+        if skill.hotbar_slot >= 1:
+            class_skills.append(skill)
+            skill_cooldowns[skill.skill_id] = 0.0
+    # Ordenar por hotbar_slot
+    class_skills.sort_custom(func(a, b): return a.hotbar_slot < b.hotbar_slot)
+
+    # Actualizar HUD con info de clase
+    if hud_node:
+        if hud_node.has_method("set_class_name"):
+            hud_node.set_class_name(class_data.get("class_name_str"))
+        if hud_node.has_method("set_faction_name"):
+            hud_node.set_faction_name(player_faction)
+        if hud_node.has_method("set_available_skills"):
+            hud_node.set_available_skills(class_skills.size())
+
+    # Buscar overlays de UI en la escena
+    _find_ui_overlays()
+
+    _class_setup_done = true
+    print("Player: Clase configurada - ", class_data.get("class_name_str"), " [", player_faction, "]")
+
+func _find_ui_overlays():
+    """Busca los overlays de skill tree y stats panel en la escena."""
+    var root = get_tree().current_scene
+    if root:
+        skill_tree_overlay = root.get_node_or_null("SkillTree")
+        stats_panel_overlay = root.get_node_or_null("StatsPanel")
+
+func _input(event: InputEvent):
+    """Maneja eventos de input: mouse, teclado.
+
+    - Mouse motion: rotacion de camara
+    - Scroll: zoom de camara
+    - Tecla V: toggle 1ra/3ra persona
+    - Escape: soltar/capturar mouse
+    - Tecla K: toggle arbol de habilidades
+    - Tecla P: toggle panel de stats
+    - Teclas 1-0: usar habilidades de la hotbar
+    """
+    # Escape para soltar/capturar mouse
+    if event.is_action_pressed("ui_cancel"):
+        if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+            Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+        else:
+            Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+        return
+
+    # UI toggles (funcionan incluso muerto)
+    if event.is_action_pressed("toggle_skills"):
+        _toggle_skill_tree()
+    if event.is_action_pressed("toggle_stats"):
+        _toggle_stats_panel()
+
+    # No procesar input de camara/combate si esta muerto
+    if current_state == PlayerState.DEAD:
+        return
+
+    # Hotbar de habilidades
+    _handle_hotbar_input(event)
+
+    # Rotacion de camara con mouse
+    if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+        camera_rotation_y -= event.relative.x * mouse_sensitivity
+        camera_rotation_x -= event.relative.y * mouse_sensitivity
+        camera_rotation_x = deg_to_rad(clampf(
+            rad_to_deg(camera_rotation_x),
+            camera_angle_min,
+            camera_angle_max
+        ))
+
+    # Zoom con scroll (suave)
+    if event is InputEventMouseButton:
+        if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+            target_camera_distance = clampf(target_camera_distance - 0.5, camera_min_distance, camera_max_distance)
+        elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+            target_camera_distance = clampf(target_camera_distance + 0.5, camera_min_distance, camera_max_distance)
+
+    # Toggle 1ra/3ra persona
+    if event.is_action_pressed("toggle_camera"):
+        toggle_camera_view()
+
+func _process(delta: float):
+    """Actualiza HUD, footstep, debug overlay, cooldowns cada frame."""
+    if current_state == PlayerState.DEAD:
+        return
+
+    # Debug overlay toggle con F1
+    var f1_pressed = Input.is_key_pressed(KEY_F1)
+    if f1_pressed and not debug_key_was_pressed:
+        debug_overlay_visible = not debug_overlay_visible
+        if hud_node and hud_node.has_method("toggle_debug"):
+            hud_node.toggle_debug()
+    debug_key_was_pressed = f1_pressed
+
+    # Actualizar HUD cada frame (incluye XP)
+    _update_hud()
+
+    # Footstep timer
+    _update_footsteps(delta)
+
+    # Reducir cooldowns de habilidades
+    _update_skill_cooldowns(delta)
+
+    # Debug info
+    if debug_overlay_visible and hud_node and hud_node.has_method("update_debug"):
+        hud_node.update_debug(current_hp, max_hp, current_stamina, max_stamina,
+            PlayerState.keys()[current_state], global_position)
+
+func _update_hud():
+    if not hud_node:
+        return
+    if hud_node.has_method("update_hp"):
+        hud_node.update_hp(current_hp, max_hp)
+    if hud_node.has_method("update_stamina"):
+        hud_node.update_stamina(current_stamina, max_stamina)
+    if hud_node.has_method("update_money"):
+        hud_node.update_money(0)
+    if hud_node.has_method("update_level"):
+        var lvl = 1
+        if StatsManager:
+            lvl = StatsManager.level
+        hud_node.update_level(lvl)
+    if hud_node.has_method("update_xp"):
+        if StatsManager:
+            hud_node.update_xp(StatsManager.current_xp, StatsManager.xp_to_next_level)
+    if hud_node.has_method("update_wanted"):
+        hud_node.update_wanted(0)
+
+func _update_footsteps(delta: float):
+    if not is_moving or not is_on_floor():
+        footstep_timer = 0.0
+        return
+
+    footstep_timer += delta
+    if footstep_timer >= FOOTSTEP_INTERVAL:
+        footstep_timer -= FOOTSTEP_INTERVAL
+        print("footstep")
+
+func _update_skill_cooldowns(delta: float):
+    """Reduce todos los cooldowns de habilidades por delta."""
+    for skill_id in skill_cooldowns:
+        if skill_cooldowns[skill_id] > 0.0:
+            skill_cooldowns[skill_id] = maxf(0.0, skill_cooldowns[skill_id] - delta)
+
+func _handle_hotbar_input(event: InputEvent):
+    """Procesa las teclas de hotbar (1-0) para usar habilidades."""
+    if not event is InputEventKey or not event.pressed:
+        return
+
+    var slot = -1
+    match event.keycode:
+        KEY_1: slot = 0
+        KEY_2: slot = 1
+        KEY_3: slot = 2
+        KEY_4: slot = 3
+        KEY_5: slot = 4
+        KEY_6: slot = 5
+        KEY_7: slot = 6
+        KEY_8: slot = 7
+        KEY_9: slot = 8
+        KEY_0: slot = 9
+
+    if slot >= 0:
+        use_skill(slot)
+
+func can_use_skill(slot: int) -> bool:
+    """Verifica si se puede usar la habilidad en el slot dado.
+
+    Comprueba: slot valido, cooldown, stamina y nivel de desbloqueo.
+
+    Parametros:
+        slot: Indice de la habilidad (0-9)
+    Returns:
+        bool: true si la habilidad se puede usar
+    """
+    if slot < 0 or slot >= class_skills.size():
+        return false
+
+    var skill = class_skills[slot]
+
+    # Verificar cooldown
+    if skill_cooldowns.has(skill.skill_id) and skill_cooldowns[skill.skill_id] > 0.0:
+        return false
+
+    # Verificar stamina usando el costo real de la habilidad
+    if StatsManager and StatsManager.current_stamina < skill.stamina_cost:
+        return false
+
+    # Verificar nivel de desbloqueo
+    if StatsManager and StatsManager.level < skill.unlock_level:
+        return false
+
+    return true
+
+func use_skill(slot: int):
+    """Usa la habilidad en el slot especificado.
+
+    Aplica costo de stamina, inicia cooldown y ejecuta el efecto.
+
+    Parametros:
+        slot: Indice de la habilidad (0-9)
+    """
+    if not can_use_skill(slot):
+        return
+
+    var skill = class_skills[slot]
+
+    # Consumir stamina (costo real de la habilidad)
+    if StatsManager:
+        StatsManager.use_stamina(skill.stamina_cost)
+
+    # Iniciar cooldown (usar el cooldown real de la habilidad)
+    skill_cooldowns[skill.skill_id] = skill.cooldown
+
+    print("Player: Usando habilidad ", skill.skill_name, " (", skill.skill_id, ") en slot ", slot, " | cooldown: ", skill.cooldown, "s | stamina: ", skill.stamina_cost)
+
+    # TODO: Activar efecto real de la habilidad segun skill_id
+    # Por ahora, solo imprime y aplica el cooldown
+
+func _toggle_skill_tree():
+    """Alterna la visibilidad del arbol de habilidades."""
+    if GameManager:
+        if GameManager.is_skill_tree_open:
+            GameManager.close_skill_tree()
+        else:
+            GameManager.open_skill_tree()
+
+    if skill_tree_overlay:
+        skill_tree_overlay.visible = not skill_tree_overlay.visible
+
+func _toggle_stats_panel():
+    """Alterna la visibilidad del panel de estadisticas."""
+    if GameManager:
+        if GameManager.is_stats_panel_open:
+            GameManager.close_stats_panel()
+        else:
+            GameManager.open_stats_panel()
+
+    if stats_panel_overlay:
+        stats_panel_overlay.visible = not stats_panel_overlay.visible
+
+func _physics_process(delta: float):
+    """Bucle principal de fisica: movimiento, estados, camara."""
+    # No procesar si esta muerto
+    if current_state == PlayerState.DEAD:
+        return
+
+    # Verificar HP critico
+    if current_hp <= 0 and current_state != PlayerState.DEAD:
+        _on_player_died()
+        return
+
+    # Obtener direccion de input
+    input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+    is_moving = input_dir.length() > 0.1
+
+    # Detectar doble-tap para roll
+    _handle_double_tap_roll(delta)
+
+    # Manejar estado de roll
+    if current_state == PlayerState.ROLLING:
+        _process_roll_state(delta)
+        return
+
+    # Sprint
+    is_sprinting = Input.is_action_pressed("sprint") and is_moving and current_stamina > 0
+
+    if is_sprinting:
+        if StatsManager:
+            StatsManager.use_stamina(1)
+
+    # Velocidad objetivo
+    var target_speed: float = walk_speed
+    if is_sprinting:
+        target_speed = sprint_speed
+        current_state = PlayerState.SPRINTING
+    elif is_moving:
+        current_state = PlayerState.WALKING
+    else:
+        current_state = PlayerState.IDLE
+
+    # Direccion de movimiento en el espacio global (relativo a camara)
+    var forward = -camera_pivot.global_transform.basis.z
+    forward.y = 0.0
+    forward = forward.normalized()
+    var right = camera_pivot.global_transform.basis.x
+    right.y = 0.0
+    right = right.normalized()
+
+    var move_direction = Vector3.ZERO
+    if input_dir.length() > 0:
+        move_direction = (forward * input_dir.y + right * input_dir.x).normalized()
+
+    # Aplicar movimiento
+    if is_on_floor():
+        is_grounded = true
+        if Input.is_action_just_pressed("jump"):
+            velocity.y = jump_velocity
+        else:
+            var target_velocity = move_direction * target_speed
+            velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
+            velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
+    else:
+        is_grounded = false
+        var air_velocity = move_direction * target_speed * air_control
+        velocity.x = move_toward(velocity.x, air_velocity.x, acceleration * air_control * delta)
+        velocity.z = move_toward(velocity.z, air_velocity.z, acceleration * air_control * delta)
+
+    # Aplicar gravedad si no esta en el suelo
+    if not is_on_floor():
+        velocity.y -= 24.0 * delta
+
+    # Orientar personaje hacia la direccion de movimiento (mesh rotation)
+    if move_direction.length() > 0.1 and current_state != PlayerState.ROLLING:
+        var target_angle = atan2(-move_direction.x, -move_direction.z)
+        rotation.y = lerp_angle(rotation.y, target_angle, 10.0 * delta)
+
+    move_and_slide()
+
+    # Actualizar camara
+    _update_camera(delta)
+
+    # Regeneracion de stamina
+    if not is_sprinting and StatsManager:
+        StatsManager.restore_stamina(int(5 * delta))
+
+func _process_roll_state(delta: float):
+    """Procesa el estado de roll (dash esquivar)."""
+    roll_timer -= delta
+    if roll_timer <= 0.0:
+        current_state = PlayerState.IDLE
+        is_rolling = false
+        can_move = true
+        return
+
+    velocity = roll_direction * roll_speed
+    velocity.y = 0.0
+    move_and_slide()
+
+func _handle_double_tap_roll(_delta: float):
+    """Detecta doble-tap de teclas direccionales para ejecutar roll."""
+    var current_key = ""
+    if Input.is_action_just_pressed("move_forward"):
+        current_key = "forward"
+    elif Input.is_action_just_pressed("move_back"):
+        current_key = "back"
+    elif Input.is_action_just_pressed("move_left"):
+        current_key = "left"
+    elif Input.is_action_just_pressed("move_right"):
+        current_key = "right"
+
+    if current_key == "":
+        return
+
+    var current_time = Time.get_ticks_msec() / 1000.0
+
+    if current_key == last_directional_key and (current_time - last_directional_key_time) < DOUBLE_TAP_TIME:
+        if StatsManager and StatsManager.use_stamina(20):
+            _start_roll(current_key)
+
+    last_directional_key = current_key
+    last_directional_key_time = current_time
+
+func _start_roll(key: String):
+    """Inicia la animacion/estado de roll."""
+    var forward = -camera_pivot.global_transform.basis.z
+    forward.y = 0.0
+    forward = forward.normalized()
+    var right = camera_pivot.global_transform.basis.x
+    right.y = 0.0
+    right = right.normalized()
+
+    match key:
+        "forward":
+            roll_direction = forward
+        "back":
+            roll_direction = -forward
+        "left":
+            roll_direction = -right
+        "right":
+            roll_direction = right
+
+    current_state = PlayerState.ROLLING
+    is_rolling = true
+    can_move = false
+    roll_timer = ROLL_DURATION
+    rolled.emit()
+
+func _update_camera(delta: float):
+    """Actualiza la posicion y rotacion de la camara con suavizado.
+
+    - 3ra persona: orbita alrededor del jugador, zoom suave, colision con paredes
+    - 1ra persona: camara en los ojos del jugador
+    """
+    # Interpolar zoom suavemente
+    current_camera_distance = lerpf(current_camera_distance, target_camera_distance, camera_smooth_speed * delta)
+
+    if is_first_person:
+        # 1ra persona: camara en la cabeza del personaje
+        camera_pivot.position = Vector3(0.0, 1.7, 0.0)
+        camera_pivot.rotation = Vector3(camera_rotation_x, 0.0, 0.0)
+        camera_3d.position = Vector3.ZERO
+        camera_3d.rotation = Vector3.ZERO
+    else:
+        # 3ra persona: orbita alrededor del jugador
+        camera_pivot.position = Vector3.ZERO
+        # Suavizar rotacion del pivot para movimiento fluido
+        camera_pivot.rotation.x = lerp_angle(camera_pivot.rotation.x, camera_rotation_x, camera_smooth_speed * delta)
+        camera_pivot.rotation.y = lerp_angle(camera_pivot.rotation.y, camera_rotation_y, camera_smooth_speed * delta)
+
+        # Posicion de camara detras del pivote
+        var target_pos = Vector3(0.0, 1.5, current_camera_distance)
+
+        # Colision: detectar obstaculos entre personaje y camara
+        var space_state = get_world_3d().direct_space_state
+        if space_state:
+            var from = global_position + Vector3(0.0, 1.5, 0.0)
+            var to = camera_pivot.to_global(target_pos)
+
+            var query = PhysicsRayQueryParameters3D.create(from, to)
+            query.exclude = [self]
+            query.collision_mask = 1  # Layer 1 = World
+
+            var result = space_state.intersect_ray(query)
+            if result:
+                var hit_distance = from.distance_to(result.position) - 0.3
+                if hit_distance < current_camera_distance:
+                    target_pos.z = hit_distance
+
+        camera_3d.position = target_pos
+        # Hacer que la camara mire hacia el jugador
+        camera_3d.look_at(global_position + Vector3(0.0, 1.5, 0.0), Vector3.UP)
+
+func toggle_camera_view():
+    """Alterna entre vista de 1ra y 3ra persona."""
+    is_first_person = not is_first_person
+    camera_toggled.emit(is_first_person)
+
+    if is_first_person:
+        mesh_instance.visible = false
+    else:
+        mesh_instance.visible = true
+
+# ============================================================
+# CONEXIONES CON STATSMANAGER
+# ============================================================
+
+func _on_stats_health_changed(hp: int, max_hp_val: int):
+    """Actualiza HP local cuando cambia en StatsManager."""
+    current_hp = hp
+    max_hp = max_hp_val
+    health_changed.emit(hp, max_hp_val)
+
+    # Verificar muerte
+    if hp <= 0 and current_state != PlayerState.DEAD:
+        _on_player_died()
+
+func _on_stats_stamina_changed(stamina: int, max_stamina_val: int):
+    """Actualiza stamina local cuando cambia en StatsManager."""
+    current_stamina = stamina
+    max_stamina = max_stamina_val
+    stamina_changed.emit(stamina, max_stamina_val)
+
+func _on_player_died():
+    """Maneja la muerte del jugador."""
+    current_state = PlayerState.DEAD
+    can_move = false
+    Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+    print("YOU DIED")
+    player_died.emit()
+
+func _on_leveled_up(new_level: int):
+    """Reacciona a una subida de nivel: flash verde, actualiza UI.
+
+    Parametros:
+        new_level: Nuevo nivel alcanzado
+    """
+    # Flash verde en pantalla
+    _flash_screen_green()
+
+    # Actualizar HUD con nuevo nivel y XP
+    if hud_node:
+        if hud_node.has_method("update_level"):
+            hud_node.update_level(new_level)
+        if hud_node.has_method("update_xp") and StatsManager:
+            hud_node.update_xp(StatsManager.current_xp, StatsManager.xp_to_next_level)
+
+    # Actualizar stats panel si esta abierto
+    if stats_panel_overlay and stats_panel_overlay.has_method("update_level") and StatsManager:
+        stats_panel_overlay.update_level(StatsManager.level, StatsManager.current_xp, StatsManager.xp_to_next_level)
+
+func _flash_screen_green():
+    """Muestra un flash verde suave en toda la pantalla al subir de nivel."""
+    if flash_overlay:
+        flash_overlay.queue_free()
+
+    flash_overlay = ColorRect.new()
+    flash_overlay.color = Color(0.0, 1.0, 0.0, 0.3)
+    flash_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+    flash_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+    var root = get_tree().current_scene
+    if root:
+        root.add_child(flash_overlay)
+
+    # Fade out suave
+    var tween = create_tween()
+    tween.tween_property(flash_overlay, "color:a", 0.0, 0.5)
+    tween.tween_callback(flash_overlay.queue_free)
+    tween.play()
+
+# ============================================================
+# METODOS PUBLICOS
+# ============================================================
+
+func take_damage(amount: int, damage_type: String = "physical", attacker: Node = null):
+    """Recibe danio y lo delega a StatsManager."""
+    if current_state == PlayerState.DEAD:
+        return
+
+    if StatsManager:
+        var actual_damage = StatsManager.apply_damage(amount, damage_type)
+        player_took_damage.emit(actual_damage, damage_type, attacker)
+
+func heal(amount: int):
+    """Cura al jugador via StatsManager."""
+    if StatsManager:
+        StatsManager.heal(amount)
+
+func die():
+    """Fuerza la muerte del jugador."""
+    if StatsManager:
+        StatsManager.current_hp = 0
+        StatsManager.health_changed.emit(0, StatsManager.max_hp)
+        _on_player_died()

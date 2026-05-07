@@ -1,0 +1,114 @@
+﻿# ============================================================
+# loot_item.gd — Loot Item in World
+# Barrio Sin Ley Online (BSLO)
+# Area3D que representa un item dropeado en el mundo.
+# El jugador lo recoge al pasar sobre el.
+# ============================================================
+extends Area3D
+
+# Item a recoger (ID de la base de datos)
+@export var item_id: String = ""
+@export var item_data: Resource = null
+@export var quantity: int = 1
+@export var pb_amount: int = 0
+
+# Animacion
+@export var spin_speed: float = 2.0
+@export var bob_height: float = 0.15
+@export var bob_speed: float = 2.0
+
+var _base_y: float = 0.0
+var _bob_time: float = 0.0
+var _life_timer: float = 0.0
+const MAX_LIFETIME: float = 120.0
+
+func _ready():
+    """Configura el area de colision y animacion."""
+    add_to_group("loot_items")
+    _base_y = global_position.y
+    _bob_time = randf() * TAU  # Random start offset
+    _life_timer = 0.0
+
+    # Conectar senial de colision
+    body_entered.connect(_on_body_entered)
+
+func _process(delta: float):
+    """Animacion de rotacion, bobbing y auto-destruccion."""
+    # Rotar lentamente
+    rotate_y(spin_speed * delta)
+
+    # Flotar arriba y abajo
+    _bob_time += delta * bob_speed
+    var bob_offset = sin(_bob_time) * bob_height
+    global_position.y = _base_y + bob_offset
+
+    # Auto-destruir despues de MAX_LIFETIME segundos
+    _life_timer += delta
+    if _life_timer >= MAX_LIFETIME:
+        queue_free()
+
+func _on_body_entered(body: Node3D):
+    """Callback cuando un cuerpo entra en el area de colision.
+    
+    Solo reacciona si el cuerpo es el jugador (grupo 'players').
+    """
+    if not body.is_in_group("players"):
+        return
+
+    var item_name = ""
+    var picked = false
+
+    # Recoger item por ID
+    if item_id != "" and InventoryManager:
+        var success = InventoryManager.add_item_by_id(item_id, quantity)
+        if success:
+            item_name = _get_item_display_name(item_id)
+            picked = true
+            print("Loot: +", item_name, " (x", quantity, ")")
+
+    # Recoger PB (dinero)
+    if pb_amount > 0:
+        item_name = "PB"
+        # TODO: Conectar con sistema de dinero del jugador
+        print("Loot: +", pb_amount, " PB")
+        picked = true
+
+    if picked:
+        # Mostrar texto flotante
+        _show_pickup_text(item_name)
+
+        # Sonido de recogida (placeholder)
+        _play_pickup_sound()
+
+        # Destruir el item
+        queue_free()
+
+func _get_item_display_name(id: String) -> String:
+    """Obtiene el nombre visible del item desde la base de datos."""
+    if ItemDatabase:
+        var data = ItemDatabase.get_item(id)
+        if data:
+            return data.item_name
+    return id
+
+func _show_pickup_text(item_name: String):
+    """Muestra un texto flotante '+ItemName' sobre el item."""
+    var label = Label3D.new()
+    label.text = "+" + item_name
+    label.font_size = 24
+    label.modulate = Color(1.0, 1.0, 0.3, 1.0)
+    label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+    label.position = Vector3(0.0, 1.0, 0.0)
+    add_child(label)
+
+    # Animar flotando hacia arriba y desapareciendo
+    var tween = create_tween()
+    tween.set_parallel(true)
+    tween.tween_property(label, "position:y", 2.5, 1.0)
+    tween.tween_property(label, "modulate:a", 0.0, 0.8)
+    tween.chain()
+    tween.tween_callback(label.queue_free)
+
+func _play_pickup_sound():
+    """Reproduce sonido de recogida (placeholder por ahora)."""
+    print("Click")
